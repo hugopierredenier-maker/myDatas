@@ -602,13 +602,18 @@
         });
       });
     });
-    // Trier par heure de départ
-    result.sort((a, b) => {
-      const da = parseNavitiaDate(a.stop_date_time.departure_date_time);
-      const db = parseNavitiaDate(b.stop_date_time.departure_date_time);
-      return (da || 0) - (db || 0);
-    });
-    return result;
+    const now = Date.now();
+    // Trier par heure de départ et ne garder que les passages à venir (ou à quai)
+    return result
+      .sort((a, b) => {
+        const da = parseNavitiaDate(a.stop_date_time.departure_date_time);
+        const db = parseNavitiaDate(b.stop_date_time.departure_date_time);
+        return (da || 0) - (db || 0);
+      })
+      .filter(dep => {
+        const d = parseNavitiaDate(dep.stop_date_time.departure_date_time);
+        return d && d.getTime() >= now - 60000; // tolérance 1 min pour "à quai"
+      });
   }
 
   function showFilteredDepartures(terminus, stopAreaId, stopAreaName, lineName) {
