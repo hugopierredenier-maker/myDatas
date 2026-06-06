@@ -559,20 +559,22 @@
 
   // ─── Vue 4 : Horaires ────────────────────────────────────────────────────────
 
-  // Convertit un ID Navitia/IDFM en MonitoringRef STIF pour stop-monitoring
-  // ex: "stop_area:IDFM:474151" → "STIF:StopArea:SP:474151:"
-  // ex: "stop_point:IDFM:monomodalStopPlace:45102" → "STIF:StopPoint:Q:45102:"
-  function toMonitoringRef(id) {
-    // stop_area
-    let m = id.match(/stop_area:IDFM:(\d+)/);
-    if (m) return `STIF:StopArea:SP:${m[1]}:`;
-    // stop_point monomodal
-    m = id.match(/monomodalStopPlace:(\d+)/);
-    if (m) return `STIF:StopPoint:Q:${m[1]}:`;
-    // stop_point générique IDFM:XXXXXX
-    m = id.match(/stop_point:IDFM:(\d+)/);
-    if (m) return `STIF:StopPoint:Q:${m[1]}:`;
+  // Extrait le numéro STIF depuis un ID Navitia
+  // "stop_area:IDFM:70622" → "70622"
+  // "stop_point:IDFM:monomodalStopPlace:427206" → "427206"
+  function extractStifId(id) {
+    let m = id.match(/monomodalStopPlace:(\d+)/);
+    if (m) return m[1];
+    m = id.match(/:IDFM:(\d+)$/);
+    if (m) return m[1];
     return null;
+  }
+
+  // Construit le LineRef STIF depuis un ID de ligne Navitia
+  // "line:IDFM:C02027" → "STIF:Line::C02027:"
+  function toLineRef(lineId) {
+    const m = lineId.match(/IDFM:(C\d+)/);
+    return m ? `STIF:Line::${m[1]}:` : null;
   }
 
   async function loadDepartures(stopPointId, terminus, stopAreaId, stopAreaName, lineName) {
@@ -586,86 +588,74 @@
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
 
-    // On essaie d'abord avec le stop_point, puis le stop_area si ça échoue ou retourne vide
-    const monRefSP = toMonitoringRef(stopPointId);
-    const monRefSA = toMonitoringRef(stopAreaId);
-
     try {
-      let visits = [];
+      const lineRef = toLineRef(state.lineId);
+      const stopStifId = extractStifId(stopPointId) || extractStifId(stopAreaId);
 
-      // Essai 1 : stop_point
-      if (monRefSP) {
-        const data = await callProxy('stop-monitoring', { MonitoringRef: monRefSP });
-        visits = extractVisitsFromSM(data, terminus);
-      }
+      if (!lineRef || !stopStifId) throw new Error('Impossible de construire les références STIF');
 
-      // Essai 2 : si vide, tenter avec stop_area
-      if (!visits.length && monRefSA) {
-        const data = await callProxy('stop-monitoring', { MonitoringRef: monRefSA });
-        visits = extractVisitsFromSM(data, terminus);
-      }
+      // estimated-timetable : tous les passages temps réel de la ligne
+      const data = await callProxy('estimated-timetable', { LineRef: lineRef });
+      const departures = extractDeparturesFromET(data, stopStifId, terminus);
 
-      // Fallback Navitia terminus_schedules si stop-monitoring ne donne rien
-      if (!visits.length) {
-        const data = await callProxy(
-          'v2/navitia/stop_points/' + stopPointId + '/terminus_schedules',
-          { count: 20, data_freshness: 'realtime', duration: 7200 }
-        );
-        visits = extractDeparturesFromTS(data, terminus);
-      }
-
-      state.allDepartures = visits;
-      renderDepartures(visits, terminus, el);
+      state.allDepartures = departures;
+      renderDepartures(departures, terminus, el);
     } catch(e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
   }
 
-  // Parse la réponse SIRI stop-monitoring
-  // Structure : Siri.ServiceDelivery.StopMonitoringDelivery[0].MonitoredStopVisit[]
-  function extractVisitsFromSM(data, terminus) {
-    const delivery = data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0];
-    const visits = delivery?.MonitoredStopVisit || [];
+  // Parse estimated-timetable SIRI et filtre sur le stop_point et la direction
+  // Structure : Siri.ServiceDelivery.EstimatedTimetableDelivery[0]
+  //   .EstimatedJourneyVersionFrame[0].EstimatedVehicleJourney[]
+  //     .EstimatedCalls.EstimatedCall[]
+  //       .StopPointRef.value  → "STIF:StopPoint:Q:427193:"
+  //       .ExpectedDepartureTime
+  //       .DepartureStatus
+  function extractDeparturesFromET(data, stopStifId, terminus) {
+    const frame = data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]
+      ?.EstimatedJourneyVersionFrame?.[0];
+    const journeys = frame?.EstimatedVehicleJourney || [];
     const now = Date.now();
     const result = [];
 
-    visits.forEach(v => {
-      const journey = v.MonitoredVehicleJourney || {};
-      const call    = journey.MonitoredCall || {};
-
-      // Direction : DestinationName ou JourneyNote
-      const destName = journey.DestinationName?.[0]?.value
-        || journey.JourneyNote?.[0]?.value
-        || call.DestinationDisplay?.[0]?.value
+    journeys.forEach(vj => {
+      // Destination du journey
+      const destName = vj.DestinationName?.[0]?.value
+        || vj.DestinationShortName?.[0]?.value
         || '';
 
-      // Filtrer sur la direction choisie (comparaison souple)
+      // Filtre direction (souple)
       if (terminus && destName && !destName.includes(terminus) && !terminus.includes(destName)) return;
 
-      const expectedDep = call.ExpectedDepartureTime || call.ExpectedArrivalTime
-        || call.AimedDepartureTime || call.AimedArrivalTime;
-      const aimedDep    = call.AimedDepartureTime || call.AimedArrivalTime;
+      const calls = vj.EstimatedCalls?.EstimatedCall || [];
+      calls.forEach(call => {
+        // Vérifier que c'est bien notre arrêt
+        const spRef = call.StopPointRef?.value || '';
+        if (!spRef.includes(stopStifId)) return;
 
-      if (!expectedDep) return;
-      const depDate = new Date(expectedDep);
-      if (depDate.getTime() < now - 60000) return; // déjà passé
+        const expectedDep = call.ExpectedDepartureTime || call.ExpectedArrivalTime
+          || call.AimedDepartureTime || call.AimedArrivalTime;
+        const aimedDep = call.AimedDepartureTime || call.AimedArrivalTime;
 
-      // Reconstruire un objet compatible renderDepartures
-      const lineRef  = journey.LineRef?.value || '';
-      const lineCode = lineRef.split('::')[1]?.replace(':', '') || state.lineInfo?.code || '';
-      result.push({
-        display_informations: {
-          ...state.lineInfo,
-          direction: destName,
-          commercial_mode: state.lineInfo?.commercial_mode || '',
-        },
-        stop_date_time: {
-          departure_date_time: expectedDep,  // ISO 8601 — on adapte parseNavitiaDate
-          base_date_time:      aimedDep,
-          data_freshness:      'realtime',
-          vehicle_at_stop:     call.VehicleAtStop || false,
-        },
-        _isISO: true  // flag pour savoir qu'on est en ISO et non format navitia
+        if (!expectedDep) return;
+        const depDate = new Date(expectedDep);
+        if (depDate.getTime() < now - 60000) return; // déjà passé
+
+        result.push({
+          display_informations: {
+            ...state.lineInfo,
+            direction: destName,
+            commercial_mode: state.lineInfo?.commercial_mode || '',
+          },
+          stop_date_time: {
+            departure_date_time: expectedDep,
+            base_date_time:      aimedDep,
+            data_freshness:      'realtime',
+            vehicle_at_stop:     call.VehicleAtStop === true,
+            departure_status:    call.DepartureStatus || '',
+          }
+        });
       });
     });
 
@@ -673,38 +663,6 @@
       new Date(a.stop_date_time.departure_date_time) - new Date(b.stop_date_time.departure_date_time)
     );
     return result;
-  }
-
-  // Convertit terminus_schedules Navitia en tableau compatible renderDepartures (fallback)
-  function extractDeparturesFromTS(data, terminus) {
-    const result = [];
-    const schedules = data.terminus_schedules || [];
-    schedules.forEach(ts => {
-      const info = ts.display_informations || {};
-      const dir  = info.direction || info.headsign || '';
-      if (terminus && dir && !dir.includes(terminus) && !terminus.includes(dir)) return;
-      (ts.date_times || []).forEach(dt => {
-        result.push({
-          display_informations: info,
-          stop_date_time: {
-            departure_date_time: dt.date_time,
-            base_date_time:      dt.base_date_time,
-            data_freshness:      dt.data_freshness || 'base_schedule'
-          }
-        });
-      });
-    });
-    const now = Date.now();
-    return result
-      .sort((a, b) => {
-        const da = parseNavitiaDate(a.stop_date_time.departure_date_time);
-        const db = parseNavitiaDate(b.stop_date_time.departure_date_time);
-        return (da || 0) - (db || 0);
-      })
-      .filter(dep => {
-        const d = parseNavitiaDate(dep.stop_date_time.departure_date_time);
-        return d && d.getTime() >= Date.now() - 60000;
-      });
   }
 
   function showFilteredDepartures(terminus, stopAreaId, stopAreaName, lineName) {
@@ -748,17 +706,18 @@
       const isRT = sdt.data_freshness === 'realtime';
       const freshBadge = `<span class="fresh ${isRT ? 'fresh-rt' : 'fresh-th'}">${isRT ? '⚡ Temps réel' : '📅 Théorique'}</span>`;
 
-      // Affiche le retard si base_date_time disponible
+      // Retard et statut
       let delayBadge = '';
       if (isRT && sdt.base_date_time && sdt.departure_date_time) {
-        const rtDate  = parseNavitiaDate(sdt.departure_date_time);
-        const thDate  = parseNavitiaDate(sdt.base_date_time);
-        if (rtDate && thDate) {
+        const rtDate  = new Date(sdt.departure_date_time);
+        const thDate  = new Date(sdt.base_date_time);
+        if (!isNaN(rtDate) && !isNaN(thDate)) {
           const delayMin = Math.round((rtDate - thDate) / 60000);
           if (delayMin > 0)      delayBadge = `<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:5px;">+${delayMin} min</span>`;
           else if (delayMin < 0) delayBadge = `<span style="font-size:11px;color:#15803d;font-weight:600;margin-left:5px;">${delayMin} min</span>`;
         }
       }
+      const statusLabel = sdt.departure_status === 'cancelled' ? '<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:5px;">Supprimé</span>' : '';
 
       const item = document.createElement('div'); item.className = 'dep-item';
       item.innerHTML = `
@@ -770,7 +729,7 @@
           </div>
         </div>
         <div class="dep-right">
-          <div class="dep-time">${timeStr}${delayBadge}${freshBadge}</div>
+          <div class="dep-time">${timeStr}${delayBadge}${statusLabel}${freshBadge}</div>
           <div class="dep-wait ${waitClass}">${waitLabel}</div>
         </div>`;
       card.appendChild(item);
