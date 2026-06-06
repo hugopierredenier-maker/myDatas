@@ -14,8 +14,6 @@ export default async function handler(req, res) {
 
   const primUrl = `https://prim.iledefrance-mobilites.fr/marketplace/${endpoint}${queryString ? '?' + queryString : ''}`;
 
-  console.log('→ PRIM URL:', primUrl);
-
   try {
     const response = await fetch(primUrl, {
       headers: {
@@ -24,7 +22,13 @@ export default async function handler(req, res) {
       },
     });
     const text = await response.text();
-    console.log('← Status:', response.status, text.slice(0, 200));
+
+    // Extrait un StopPointRef pour debug
+    const match = text.match(/"StopPointRef":\s*\{[^}]*"value"\s*:\s*"([^"]+)"/);
+    const sample = match ? match[1] : 'non trouvé';
+    console.log('StopPointRef sample:', sample);
+    console.log('PRIM status:', response.status);
+
     try {
       return res.status(response.status).json(JSON.parse(text));
     } catch {
