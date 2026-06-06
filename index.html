@@ -267,7 +267,7 @@
 
   // Appels via le proxy /api/prim
   async function callProxy(endpoint, params = {}) {
-    const qs = new URLSearchParams({ endpoint, ...params }).toString();
+    const qs = new URLSearchParams({ endpoint: encodeURIComponent(endpoint), ...params }).toString();
     const resp = await fetch('/api/prim?' + qs);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     return resp.json();
