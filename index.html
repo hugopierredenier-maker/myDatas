@@ -497,7 +497,7 @@
 
       if (!dirMap.size) {
         // Fallback : charger les départs directement si pas de routes
-        const fallback = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/departures', { count: 50, 'filter': 'line.id=' + lineId });
+        const fallback = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/departures', { count: 50, 'filter': 'line.id=' + lineId, data_freshness: 'realtime' });
         state.allDepartures = fallback.departures || [];
         if (!state.allDepartures.length) {
           el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucune direction trouvée.</div>'; return;
@@ -566,12 +566,57 @@
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
     try {
-      const data = await callProxy('v2/navitia/stop_points/' + stopPointId + '/departures', { count: 20 });
-      state.allDepartures = data.departures || [];
-      renderDepartures(state.allDepartures, terminus, el);
+      // estimated_timetable retourne les horaires temps réel sur la ligne entière,
+      // on filtre ensuite sur le stop_point voulu
+      const data = await callProxy(
+        'v2/navitia/lines/' + state.lineId + '/estimated_timetable',
+        { count: 50, data_freshness: 'realtime' }
+      );
+      // Extraire les stop_times qui correspondent à notre stop_point ET notre direction
+      const departures = extractDeparturesFromET(data, stopPointId, terminus);
+      state.allDepartures = departures;
+      renderDepartures(departures, terminus, el);
     } catch(e) {
-      el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
+      // Fallback sur /departures classique si estimated_timetable échoue
+      try {
+        const data2 = await callProxy('v2/navitia/stop_points/' + stopPointId + '/departures',
+          { count: 20, data_freshness: 'realtime' });
+        state.allDepartures = data2.departures || [];
+        renderDepartures(state.allDepartures, terminus, el);
+      } catch(e2) {
+        el.innerHTML = `<div class="error-box">Erreur : ${e2.message}</div>`;
+      }
     }
+  }
+
+  // Convertit la réponse estimated_timetable en tableau de départs compatibles renderDepartures
+  function extractDeparturesFromET(data, stopPointId, terminus) {
+    const result = [];
+    const vehicleJourneys = data.vehicle_journeys || data.estimated_timetable?.vehicle_journeys || [];
+    vehicleJourneys.forEach(vj => {
+      const info = vj.display_informations || {};
+      const dir  = info.direction || info.headsign || '';
+      // Filtrer sur la direction voulue
+      if (terminus && dir && dir !== terminus) return;
+      (vj.stop_times || []).forEach(st => {
+        if (st.stop_point?.id !== stopPointId) return;
+        result.push({
+          display_informations: info,
+          stop_date_time: {
+            departure_date_time: st.departure_date_time || st.arrival_date_time,
+            arrival_date_time:   st.arrival_date_time || st.departure_date_time,
+            data_freshness:      st.data_freshness || vj.data_freshness || 'base_schedule'
+          }
+        });
+      });
+    });
+    // Trier par heure de départ
+    result.sort((a, b) => {
+      const da = parseNavitiaDate(a.stop_date_time.departure_date_time);
+      const db = parseNavitiaDate(b.stop_date_time.departure_date_time);
+      return (da || 0) - (db || 0);
+    });
+    return result;
   }
 
   function showFilteredDepartures(terminus, stopAreaId, stopAreaName, lineName) {
