@@ -5,119 +5,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Transports IDF — Prochains passages</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #f5f4f0; --surface: #fff; --border: rgba(0,0,0,0.1);
+      --bg: #f5f4f0; --surface: #ffffff; --border: rgba(0,0,0,0.09);
       --text: #1a1a1a; --muted: #6b6b6b; --accent: #1a56db; --accent-bg: #eef3ff;
       --danger-bg: #fef2f2; --danger-border: #dc2626; --danger-text: #7f1d1d;
       --success: #15803d; --radius: 14px; --radius-sm: 9px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #111110; --surface: #1c1c1b; --border: rgba(255,255,255,0.1);
+        --bg: #111110; --surface: #1c1c1b; --border: rgba(255,255,255,0.09);
         --text: #f0ede8; --muted: #888885; --accent: #5b8af5; --accent-bg: #1a2540;
         --danger-bg: #2a1010; --danger-border: #dc2626; --danger-text: #fca5a5;
       }
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-    .app { max-width: 560px; margin: 0 auto; padding: 2rem 1rem 5rem; }
+    .app { max-width: 600px; margin: 0 auto; padding: 2rem 1rem 4rem; }
     header { margin-bottom: 2rem; }
-    header h1 { font-size: 22px; font-weight: 600; }
+    header h1 { font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
     header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
     .search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
     .search-bar input {
-      flex: 1; height: 44px; padding: 0 14px;
-      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      flex: 1; height: 42px; padding: 0 14px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
       background: var(--surface); color: var(--text);
-      font-family: inherit; font-size: 15px; outline: none; transition: border-color 0.15s;
+      font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.15s;
     }
     .search-bar input:focus { border-color: var(--accent); }
     .search-bar button {
-      height: 44px; padding: 0 20px; border-radius: var(--radius-sm);
-      font-family: inherit; font-size: 14px; font-weight: 600;
-      cursor: pointer; border: none; background: var(--accent); color: #fff;
+      height: 42px; padding: 0 18px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      cursor: pointer; border: none; background: var(--accent); color: #fff; transition: opacity 0.15s;
     }
+    .search-bar button:hover { opacity: 0.9; }
     .search-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
     .hints { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.5rem; }
     .hint-chip {
-      font-size: 12px; padding: 5px 12px; border-radius: 99px;
+      font-size: 12px; padding: 4px 10px; border-radius: 99px;
       border: 1px solid var(--border); background: var(--surface);
       color: var(--muted); cursor: pointer; transition: all 0.12s;
     }
     .hint-chip:hover { border-color: var(--accent); color: var(--accent); }
-    .breadcrumb {
-      display: none; align-items: center; gap: 6px; flex-wrap: wrap;
-      font-size: 12px; color: var(--muted); margin-bottom: 1.25rem;
-    }
-    .breadcrumb .crumb { cursor: pointer; }
-    .breadcrumb .crumb:hover { color: var(--accent); text-decoration: underline; }
-    .breadcrumb .sep { opacity: 0.4; }
-    .section-label {
-      font-size: 11px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px;
-    }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; }
     .list-item {
       display: flex; align-items: center; gap: 12px;
-      padding: 13px 16px; cursor: pointer;
+      padding: 12px 16px; cursor: pointer;
       border-bottom: 1px solid var(--border); transition: background 0.12s;
     }
     .list-item:last-child { border-bottom: none; }
     .list-item:hover { background: var(--bg); }
     .item-icon {
-      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
       background: var(--accent-bg); color: var(--accent);
-      display: flex; align-items: center; justify-content: center; font-size: 17px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
     }
     .item-name { font-size: 14px; font-weight: 500; }
     .item-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .lines-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
-    .line-card {
-      background: var(--surface); border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm); padding: 14px 8px;
-      cursor: pointer; text-align: center; transition: all 0.12s;
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    .item-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted);
     }
-    .line-card:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-1px); }
-    .line-badge {
-      font-size: 13px; font-weight: 700; padding: 5px 10px;
-      border-radius: 6px; color: #fff; min-width: 38px;
-      display: inline-block; text-align: center;
+    /* Badge coloré avec couleur de ligne */
+    .badge-line {
+      font-size: 11px; font-weight: 700; padding: 2px 9px;
+      border-radius: 4px; display: inline-block;
     }
-    .line-mode { font-size: 11px; color: var(--muted); }
-    .next-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-    .time-card {
-      background: var(--surface); border: 1.5px solid var(--border);
-      border-radius: var(--radius); padding: 16px;
+    .departure-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      gap: 12px;
     }
-    .time-card.next { border-color: var(--accent); background: var(--accent-bg); }
-    .time-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-    .time-card.next .time-label { color: var(--accent); }
-    .time-value { font-size: 30px; font-weight: 700; line-height: 1; }
-    .time-wait { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .time-wait.soon { color: var(--success); font-weight: 600; }
-    .time-dest { font-size: 12px; color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .line-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .refresh-btn {
-      width: 100%; height: 40px; border-radius: var(--radius-sm);
-      font-family: inherit; font-size: 13px; font-weight: 500;
-      cursor: pointer; border: 1px solid var(--border);
-      background: var(--surface); color: var(--muted); margin-top: 8px;
+    .departure-item:last-child { border-bottom: none; }
+    .departure-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .departure-dest { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .departure-mode { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .departure-right { text-align: right; flex-shrink: 0; }
+    .departure-time { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .departure-wait { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .departure-wait.soon { color: var(--success); font-weight: 600; }
+    .departure-wait.quai { color: var(--accent); font-weight: 600; }
+    .section-label {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 10px;
     }
-    .refresh-btn:hover { background: var(--bg); }
+    .breadcrumb { font-size: 12px; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .breadcrumb span { cursor: pointer; }
+    .breadcrumb span:hover { color: var(--accent); text-decoration: underline; }
+    .breadcrumb .sep { opacity: 0.4; }
     .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 14px; }
     .empty .icon { font-size: 36px; margin-bottom: 12px; }
     .error-box {
       background: var(--danger-bg); border: 1px solid var(--danger-border);
-      border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--danger-text);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      font-size: 13px; color: var(--danger-text);
     }
     .spinner {
-      display: inline-block; width: 15px; height: 15px;
+      display: inline-block; width: 16px; height: 16px;
       border: 2px solid var(--border); border-top-color: var(--muted);
       border-radius: 50%; animation: spin 0.7s linear infinite;
       vertical-align: -3px; margin-right: 6px;
+    }
+    .freshness-badge {
+      display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px;
+      border-radius: 99px; margin-left: 6px; vertical-align: middle;
+    }
+    .freshness-realtime { background: #dcfce7; color: #166534; }
+    .freshness-theorique { background: #fef9c3; color: #713f12; }
+    @media (prefers-color-scheme: dark) {
+      .freshness-realtime { background: #14532d; color: #86efac; }
+      .freshness-theorique { background: #422006; color: #fde68a; }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -126,36 +126,37 @@
 <div class="app">
   <header>
     <h1>🚇 Transports IDF</h1>
-    <p>Station → Ligne → Prochains passages en temps réel</p>
+    <p>Recherche un arrêt pour voir les prochains passages</p>
   </header>
 
   <div class="search-bar">
-    <input type="text" id="search-input" placeholder="Station, arrêt, gare…" />
-    <button id="search-btn" onclick="searchStops()">Chercher</button>
+    <input type="text" id="search-input" placeholder="Ex: Châtelet, Nation, Montparnasse…" />
+    <button id="search-btn" onclick="searchStops()">Rechercher</button>
   </div>
 
   <div class="hints">
     <span class="hint-chip" onclick="fillAndSearch('Châtelet')">Châtelet</span>
     <span class="hint-chip" onclick="fillAndSearch('Nation')">Nation</span>
-    <span class="hint-chip" onclick="fillAndSearch('Gare du Nord')">Gare du Nord</span>
-    <span class="hint-chip" onclick="fillAndSearch('La Défense')">La Défense</span>
     <span class="hint-chip" onclick="fillAndSearch('Montparnasse')">Montparnasse</span>
+    <span class="hint-chip" onclick="fillAndSearch('La Défense')">La Défense</span>
+    <span class="hint-chip" onclick="fillAndSearch('Gare du Nord')">Gare du Nord</span>
+    <span class="hint-chip" onclick="fillAndSearch('Saint-Lazare')">Saint-Lazare</span>
   </div>
 
-  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="breadcrumb" id="breadcrumb" style="display:none;"></div>
 
-  <!-- Vue 1 : stations -->
+  <!-- Vue 1 : résultats de recherche -->
   <div id="view-search">
     <div class="empty" id="search-empty">
       <div class="icon">🔍</div>
-      Tape le nom d'une station pour commencer.
+      Tape le nom d'un arrêt et clique sur Rechercher.
     </div>
     <div id="search-results"></div>
   </div>
 
-  <!-- Vue 2 : lignes -->
-  <div id="view-lines" style="display:none;">
-    <div id="lines-content"></div>
+  <!-- Vue 2 : quais / stop_points -->
+  <div id="view-stoppoints" style="display:none;">
+    <div id="stoppoints-content"></div>
   </div>
 
   <!-- Vue 3 : passages -->
@@ -165,30 +166,14 @@
 </div>
 
 <script>
-  let state = { stopAreaId: '', stopAreaName: '', line: null, stopPoints: [] };
+  let currentStopAreaId = '';
+  let currentStopAreaName = '';
 
   async function callProxy(endpoint, params = {}) {
     const qs = new URLSearchParams({ endpoint, ...params }).toString();
     const resp = await fetch('/api/prim?' + qs);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     return resp.json();
-  }
-
-  function showView(name) {
-    ['search','lines','departures'].forEach(v =>
-      document.getElementById('view-'+v).style.display = v === name ? 'block' : 'none'
-    );
-  }
-
-  function setBreadcrumb(items) {
-    const bc = document.getElementById('breadcrumb');
-    if (!items.length) { bc.style.display = 'none'; return; }
-    bc.style.display = 'flex';
-    bc.innerHTML = items.map((item, i) =>
-      i < items.length - 1
-        ? `<span class="crumb" onclick="${item.fn}">${item.label}</span><span class="sep">›</span>`
-        : `<strong>${item.label}</strong>`
-    ).join('');
   }
 
   function fillAndSearch(name) {
@@ -200,260 +185,255 @@
     if (e.key === 'Enter') searchStops();
   });
 
-  function lineColor(line) {
-    if (line.color) return '#' + line.color;
-    const m = (line.physical_modes?.[0]?.name || '').toLowerCase();
-    if (m.includes('métro')) return '#FF6900';
-    if (m.includes('rer') || m.includes('train')) return '#007852';
-    if (m.includes('tram')) return '#008B8B';
-    return '#1a56db';
+  function showView(name) {
+    ['search', 'stoppoints', 'departures'].forEach(v => {
+      document.getElementById('view-' + v).style.display = v === name ? 'block' : 'none';
+    });
   }
 
-  // Étape 1 — recherche stations
+  function updateBreadcrumb(items) {
+    const bc = document.getElementById('breadcrumb');
+    if (!items.length) { bc.style.display = 'none'; return; }
+    bc.style.display = 'flex';
+    bc.innerHTML = items.map((item, i) =>
+      i < items.length - 1
+        ? `<span onclick="${item.action}">${item.label}</span><span class="sep">›</span>`
+        : `<strong>${item.label}</strong>`
+    ).join('');
+  }
+
+  // Parse le format Navitia "20260606T175027" → Date JS
+  function parseNavitiaDate(str) {
+    if (!str) return null;
+    // format : YYYYMMDDTHHmmss
+    const y = str.slice(0,4), mo = str.slice(4,6), d = str.slice(6,8);
+    const h = str.slice(9,11), mi = str.slice(11,13), s = str.slice(13,15);
+    return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}`);
+  }
+
+  function formatTime(date) {
+    if (!date) return '—';
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Calcule une couleur de texte (noir/blanc) lisible sur un fond hex
+  function textColor(hex) {
+    const r = parseInt(hex.slice(0,2),16);
+    const g = parseInt(hex.slice(2,4),16);
+    const b = parseInt(hex.slice(4,6),16);
+    return (r*299 + g*587 + b*114) / 1000 > 128 ? '#000000' : '#ffffff';
+  }
+
   async function searchStops() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
+
     const btn = document.getElementById('search-btn');
-    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-    showView('search'); setBreadcrumb([]);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    showView('search');
+    updateBreadcrumb([]);
+
     const empty = document.getElementById('search-empty');
     const results = document.getElementById('search-results');
-    empty.innerHTML = '<span class="spinner"></span> Recherche…';
-    empty.style.display = 'block'; results.innerHTML = '';
+    empty.innerHTML = '<span class="spinner"></span> Recherche en cours…';
+    empty.style.display = 'block';
+    results.innerHTML = '';
 
     try {
-      const data = await callProxy('v2/navitia/places', { q, count: 8 });
-      const places = (data.places || []).filter(p => p.embedded_type === 'stop_area');
+      const data = await callProxy('v2/navitia/places', { q, count: 10 });
+      const places = (data.places || []).filter(p =>
+        p.embedded_type === 'stop_area' || p.embedded_type === 'stop_point'
+      );
+
       empty.style.display = 'none';
+
       if (!places.length) {
-        empty.innerHTML = `<div class="icon">😕</div>Aucune station trouvée pour « ${q} ».`;
+        empty.innerHTML = `<div class="icon">😕</div>Aucun arrêt trouvé pour « ${q} ».`;
         empty.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Chercher'; return;
+        btn.disabled = false; btn.textContent = 'Rechercher';
+        return;
       }
+
       const card = document.createElement('div');
       card.className = 'card';
+
       places.forEach(p => {
-        const s = p.stop_area;
-        const modes = (s.physical_modes || []).map(m => m.name).join(' · ') || '';
+        const s = p.stop_area || p.stop_point;
+        if (!s) return;
+        const modes = (s.physical_modes || []).map(m => m.name).join(', ') || '';
+        const lines = (s.lines || []).slice(0, 6)
+          .map(l => `<span class="badge">${l.code || l.name || '?'}</span>`).join('');
+
         const item = document.createElement('div');
         item.className = 'list-item';
         item.innerHTML = `
           <div class="item-icon">📍</div>
-          <div style="flex:1;min-width:0;">
+          <div style="flex:1; min-width:0;">
             <div class="item-name">${s.name}</div>
             ${modes ? `<div class="item-meta">${modes}</div>` : ''}
+            ${lines ? `<div class="item-lines">${lines}</div>` : ''}
           </div>
-          <span style="color:var(--muted);font-size:20px;">›</span>
+          <span style="color:var(--muted); font-size:20px;">›</span>
         `;
-        item.onclick = () => loadLines(s.id, s.name);
+        item.onclick = () => loadStopPoints(s.id, s.name);
         card.appendChild(item);
       });
+
       results.appendChild(card);
-    } catch(e) {
+    } catch (e) {
       empty.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
       empty.style.display = 'block';
     }
-    btn.disabled = false; btn.textContent = 'Chercher';
+
+    btn.disabled = false;
+    btn.textContent = 'Rechercher';
   }
 
-  // Étape 2 — lignes de la station
-  async function loadLines(stopAreaId, stopAreaName) {
-    state.stopAreaId = stopAreaId;
-    state.stopAreaName = stopAreaName;
-    showView('lines');
-    setBreadcrumb([
-      { label: document.getElementById('search-input').value, fn: 'backToSearch()' },
+  async function loadStopPoints(stopAreaId, stopAreaName) {
+    currentStopAreaId = stopAreaId;
+    currentStopAreaName = stopAreaName;
+    showView('stoppoints');
+    updateBreadcrumb([
+      { label: document.getElementById('search-input').value, action: 'backToSearch()' },
       { label: stopAreaName }
     ]);
-    const el = document.getElementById('lines-content');
-    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des lignes…</div>';
+
+    const el = document.getElementById('stoppoints-content');
+    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des quais…</div>';
 
     try {
-      const data = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/stop_points', { count: 30 });
+      const data = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/stop_points', { count: 20 });
       const points = data.stop_points || [];
-      state.stopPoints = points;
 
-      // Déduplique les lignes
-      const linesMap = {};
-      points.forEach(sp => {
-        (sp.lines || []).forEach(l => {
-          if (!linesMap[l.id]) linesMap[l.id] = { line: l, stopPoints: [] };
-          // Évite les doublons de stop_points par ligne
-          if (!linesMap[l.id].stopPoints.find(x => x.id === sp.id)) {
-            linesMap[l.id].stopPoints.push(sp);
-          }
-        });
-      });
+      el.innerHTML = `<div class="section-label">Choisir un quai — ${stopAreaName}</div>`;
 
-      const lines = Object.values(linesMap);
-      if (!lines.length) {
-        el.innerHTML = '<div class="empty"><div class="icon">😕</div>Aucune ligne trouvée.</div>';
+      if (!points.length) {
+        el.innerHTML += '<div class="empty"><div class="icon">😕</div>Aucun quai trouvé.</div>';
         return;
       }
 
-      el.innerHTML = `<div class="section-label">Lignes disponibles — ${stopAreaName}</div>`;
-      const grid = document.createElement('div');
-      grid.className = 'lines-grid';
+      const card = document.createElement('div');
+      card.className = 'card';
 
-      // Trie : métro > RER > Tram > Bus
-      const order = { 'métro': 0, 'rer': 1, 'train': 2, 'tram': 3, 'bus': 4 };
-      lines.sort((a, b) => {
-        const ma = (a.line.physical_modes?.[0]?.name || '').toLowerCase();
-        const mb = (b.line.physical_modes?.[0]?.name || '').toLowerCase();
-        const oa = Object.entries(order).find(([k]) => ma.includes(k))?.[1] ?? 5;
-        const ob = Object.entries(order).find(([k]) => mb.includes(k))?.[1] ?? 5;
-        return oa !== ob ? oa - ob : (a.line.code || '').localeCompare(b.line.code || '');
-      });
+      points.forEach(sp => {
+        const lines = (sp.lines || []).slice(0, 6)
+          .map(l => {
+            if (l.color) {
+              const bg = l.color.replace('#','');
+              const fg = textColor(bg);
+              return `<span class="badge-line" style="background:#${bg};color:${fg};">${l.code || l.name || '?'}</span>`;
+            }
+            return `<span class="badge">${l.code || l.name || '?'}</span>`;
+          }).join('');
 
-      lines.forEach(({ line, stopPoints }) => {
-        const color = lineColor(line);
-        const mode = line.physical_modes?.[0]?.name || '';
-        const card = document.createElement('div');
-        card.className = 'line-card';
-        card.innerHTML = `
-          <span class="line-badge" style="background:${color};">${line.code || line.name}</span>
-          <span class="line-mode">${mode}</span>
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+          <div class="item-icon">🚉</div>
+          <div style="flex:1; min-width:0;">
+            <div class="item-name">${sp.name}</div>
+            ${lines ? `<div class="item-lines">${lines}</div>` : ''}
+          </div>
+          <span style="color:var(--muted); font-size:20px;">›</span>
         `;
-        card.onclick = () => loadDepartures(line, color, stopPoints);
-        grid.appendChild(card);
+        item.onclick = () => loadDepartures(sp.id, sp.name, stopAreaId, stopAreaName);
+        card.appendChild(item);
       });
-      el.appendChild(grid);
-    } catch(e) {
+
+      el.appendChild(card);
+    } catch (e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
   }
 
-  // Étape 3 — prochains passages via v2/navitia/departures
-  async function loadDepartures(line, color, stopPoints) {
-    state.line = line;
-    state.lineColor = color;
-    state.currentStopPoints = stopPoints;
+  async function loadDepartures(stopPointId, stopPointName, stopAreaId, stopAreaName) {
     showView('departures');
-    setBreadcrumb([
-      { label: document.getElementById('search-input').value, fn: 'backToSearch()' },
-      { label: state.stopAreaName, fn: `loadLines('${state.stopAreaId}', '${state.stopAreaName.replace(/'/g,"\\'")}')` },
-      { label: 'Ligne ' + (line.code || line.name) }
+    updateBreadcrumb([
+      { label: document.getElementById('search-input').value, action: 'backToSearch()' },
+      { label: stopAreaName, action: `loadStopPoints('${stopAreaId}', '${stopAreaName.replace(/'/g,"\\'")}')` },
+      { label: stopPointName }
     ]);
-    await refreshDepartures();
-  }
 
-  async function refreshDepartures() {
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des passages…</div>';
 
     try {
-      const line = state.line;
-      const color = state.lineColor;
-      const stopPoints = state.currentStopPoints;
+      // ✅ Endpoint Navitia departures — format correct
+      const data = await callProxy(
+        'v2/navitia/stop_points/' + stopPointId + '/departures',
+        { count: 20 }
+      );
 
-      // Récupère les départs pour chaque stop_point via v2/navitia/departures
-      const allDepartures = [];
-      await Promise.all(stopPoints.map(async sp => {
-        try {
-          const data = await callProxy(
-            'v2/navitia/stop_points/' + sp.id + '/departures',
-            { count: 5, 'forbidden_uris[]': '' }
-          );
-          const deps = data.departures || [];
-          deps.forEach(d => {
-            // Filtre sur la ligne
-            const depLineId = d.route?.line?.id || '';
-            if (depLineId === line.id) {
-              allDepartures.push({ dep: d, stopName: sp.name });
-            }
-          });
-        } catch(e) { /* ignore */ }
-      }));
+      const departures = data.departures || [];
 
-      // Trie par heure
-      allDepartures.sort((a, b) => {
-        const ta = new Date(a.dep.stop_date_time?.departure_date_time || 0).getTime();
-        const tb = new Date(b.dep.stop_date_time?.departure_date_time || 0).getTime();
-        return ta - tb;
-      });
+      el.innerHTML = `<div class="section-label">📍 ${stopPointName}</div>`;
 
-      el.innerHTML = '';
-
-      // Header
-      const header = document.createElement('div');
-      header.className = 'line-header';
-      header.innerHTML = `
-        <span class="line-badge" style="background:${color};font-size:16px;padding:6px 16px;">${line.code || line.name}</span>
-        <span style="font-size:15px;font-weight:500;">${state.stopAreaName}</span>
-      `;
-      el.appendChild(header);
-
-      if (!allDepartures.length) {
-        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé pour cette ligne.</div>';
-        renderRefreshBtn(el);
+      if (!departures.length) {
+        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé.</div>';
         return;
       }
 
-      // Regroupe par direction
-      const byDir = {};
-      allDepartures.forEach(({ dep, stopName }) => {
-        const dest = dep.display_informations?.direction || dep.route?.name || '?';
-        if (!byDir[dest]) byDir[dest] = [];
-        byDir[dest].push({ dep, stopName });
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      departures.forEach(dep => {
+        const info = dep.display_informations || {};
+        const sdt  = dep.stop_date_time || {};
+
+        // ✅ Parsing du format Navitia "20260606T175027"
+        const dateStr = sdt.departure_date_time || sdt.arrival_date_time;
+        const date = parseNavitiaDate(dateStr);
+        const timeStr = formatTime(date);
+
+        const waitMin = date ? Math.round((date - Date.now()) / 60000) : null;
+        let waitLabel = '';
+        let waitClass = '';
+        if (waitMin !== null) {
+          if (waitMin <= 0)      { waitLabel = 'À quai';       waitClass = 'quai'; }
+          else if (waitMin <= 1) { waitLabel = '1 min';        waitClass = 'soon'; }
+          else                   { waitLabel = waitMin + ' min'; waitClass = waitMin <= 4 ? 'soon' : ''; }
+        }
+
+        // Couleur de la ligne
+        const lineColor = info.color ? info.color.replace('#','') : null;
+        const lineFg    = lineColor ? textColor(lineColor) : null;
+        const lineBadge = lineColor
+          ? `<span class="badge-line" style="background:#${lineColor};color:${lineFg};">${info.code || '?'}</span>`
+          : `<span class="badge">${info.code || '?'}</span>`;
+
+        // Fraîcheur de la donnée
+        const isRealtime = sdt.data_freshness === 'realtime';
+        const freshBadge = `<span class="freshness-badge ${isRealtime ? 'freshness-realtime' : 'freshness-theorique'}">${isRealtime ? '⚡ Temps réel' : '📅 Théorique'}</span>`;
+
+        const item = document.createElement('div');
+        item.className = 'departure-item';
+        item.innerHTML = `
+          <div class="departure-left">
+            ${lineBadge}
+            <div style="min-width:0;">
+              <div class="departure-dest">${info.direction || info.headsign || '?'}</div>
+              <div class="departure-mode">${info.commercial_mode || ''}</div>
+            </div>
+          </div>
+          <div class="departure-right">
+            <div class="departure-time">${timeStr}${freshBadge}</div>
+            <div class="departure-wait ${waitClass}">${waitLabel}</div>
+          </div>
+        `;
+        card.appendChild(item);
       });
 
-      Object.entries(byDir).forEach(([dest, items]) => {
-        const dirLabel = document.createElement('div');
-        dirLabel.className = 'section-label';
-        dirLabel.style.marginTop = '14px';
-        dirLabel.textContent = '→ ' + dest;
-        el.appendChild(dirLabel);
-
-        const next2 = items.slice(0, 2);
-        const grid = document.createElement('div');
-        grid.className = 'next-times';
-
-        next2.forEach((item, i) => {
-          const dt = item.dep.stop_date_time?.departure_date_time;
-          // Format Navitia : YYYYMMDDTHHmmss
-          const date = dt ? parseNavitiaDate(dt) : null;
-          const timeStr = date ? date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—';
-          const waitMin = date ? Math.round((date - Date.now()) / 60000) : null;
-          const waitLabel = waitMin === null ? '' : waitMin <= 0 ? 'À quai ✓' : `dans ${waitMin} min`;
-          const soonClass = waitMin !== null && waitMin <= 2 ? ' soon' : '';
-
-          const card = document.createElement('div');
-          card.className = 'time-card' + (i === 0 ? ' next' : '');
-          card.innerHTML = `
-            <div class="time-label">${i === 0 ? 'Prochain' : 'Suivant'}</div>
-            <div class="time-value">${timeStr}</div>
-            <div class="time-wait${soonClass}">${waitLabel}</div>
-            <div class="time-dest">${item.stopName}</div>
-          `;
-          grid.appendChild(card);
-        });
-        el.appendChild(grid);
-      });
-
-      renderRefreshBtn(el);
-    } catch(e) {
+      el.appendChild(card);
+    } catch (e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
   }
 
-  // Parse le format Navitia : 20240606T143000
-  function parseNavitiaDate(dt) {
-    const s = dt.replace('T', '');
-    const y = s.slice(0,4), mo = s.slice(4,6), d = s.slice(6,8);
-    const h = s.slice(8,10), mi = s.slice(10,12), sec = s.slice(12,14);
-    return new Date(`${y}-${mo}-${d}T${h}:${mi}:${sec}`);
-  }
-
-  function renderRefreshBtn(el) {
-    const btn = document.createElement('button');
-    btn.className = 'refresh-btn';
-    btn.textContent = '↻ Actualiser';
-    btn.onclick = refreshDepartures;
-    el.appendChild(btn);
-  }
-
   function backToSearch() {
-    showView('search'); setBreadcrumb([]);
+    showView('search');
+    updateBreadcrumb([]);
   }
 </script>
 </body>
