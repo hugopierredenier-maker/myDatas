@@ -354,7 +354,7 @@
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des quais…</div>';
 
     try {
-      const data = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/stop_points', { count: 20 });
+      const data = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/stop_points', { count: 40 });
       const points = data.stop_points || [];
 
       el.innerHTML = `<div class="section-label">Choisir un quai — ${stopAreaName}</div>`;
@@ -364,11 +364,38 @@
         return;
       }
 
+      // Regrouper les stop_points par signature (lignes desservies)
+      // Un même quai physique peut avoir plusieurs stop_points pour des modes différents
+      // On regroupe pour éviter les doublons sans info utile
+      const groups = new Map();
+      points.forEach(sp => {
+        const lines = sp.lines || [];
+        // Clé = ensemble trié des IDs de lignes
+        const sigKey = lines.map(l => l.id).sort().join('|') || sp.id;
+        if (!groups.has(sigKey)) {
+          groups.set(sigKey, { sp, lines });
+        } else {
+          // Garder celui qui a le plus de lignes
+          if (lines.length > groups.get(sigKey).lines.length) {
+            groups.set(sigKey, { sp, lines });
+          }
+        }
+      });
+
       const card = document.createElement('div');
       card.className = 'card';
 
-      points.forEach(sp => {
-        const lines = (sp.lines || []).slice(0, 6).map(l => {
+      groups.forEach(({ sp, lines }) => {
+        // Construire un label de direction depuis les routes/destinations des lignes
+        // On extrait les directions disponibles sur ce quai via les routes
+        const routes = sp.routes || [];
+        const directions = [...new Set(
+          routes.map(r => r.direction?.stop_area?.name || r.name || '').filter(Boolean)
+        )].slice(0, 3);
+
+        const modeIcon = getModeIcon(lines[0]?.commercial_modes?.[0]?.name || sp.commercial_modes?.[0]?.name || '');
+
+        const lineBadges = lines.slice(0, 6).map(l => {
           if (l.color) {
             const bg = l.color.replace('#','');
             const fg = textColor(bg);
@@ -377,13 +404,20 @@
           return `<span class="badge">${l.code || l.name || '?'}</span>`;
         }).join('');
 
+        const dirText = directions.length
+          ? `<div class="item-meta" style="margin-top:4px;">→ ${directions.join(', ')}</div>`
+          : '';
+
+        const modeName = lines[0]?.commercial_modes?.[0]?.name || sp.commercial_modes?.[0]?.name || '';
+
         const item = document.createElement('div');
         item.className = 'list-item';
         item.innerHTML = `
-          <div class="item-icon">🚉</div>
+          <div class="item-icon" style="font-size:18px;">${modeIcon}</div>
           <div style="flex:1; min-width:0;">
-            <div class="item-name">${sp.name}</div>
-            ${lines ? `<div class="item-lines">${lines}</div>` : ''}
+            <div class="item-name">${sp.name}${modeName ? `<span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">${modeName}</span>` : ''}</div>
+            ${lineBadges ? `<div class="item-lines" style="margin-top:5px;">${lineBadges}</div>` : ''}
+            ${dirText}
           </div>
           <span style="color:var(--muted); font-size:20px;">›</span>
         `;
@@ -395,6 +429,16 @@
     } catch (e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
+  }
+
+  function getModeIcon(modeName) {
+    const m = (modeName || '').toLowerCase();
+    if (m.includes('métro') || m.includes('metro')) return '🚇';
+    if (m.includes('rer') || m.includes('train') || m.includes('transilien')) return '🚆';
+    if (m.includes('tram')) return '🚊';
+    if (m.includes('bus') || m.includes('noctilien')) return '🚌';
+    if (m.includes('câble') || m.includes('cable') || m.includes('funiculaire')) return '🚡';
+    return '🚉';
   }
 
   // ─── Vue 2.5 : choix de la direction ─────────────────────────────────────────
