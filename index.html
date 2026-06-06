@@ -244,9 +244,19 @@
     return '🚉';
   }
 
-  // "line:IDFM:C01390" → "STIF:Line::C01390:"
-  function toLineRef(lineId) {
-    const m = lineId.match(/IDFM:(C\d+)/);
+  // Construit le LineRef SIRI depuis l'ID Navitia + les codes source
+  // Tous les formats : "line:IDFM:C01379" ou codes[source]="FR1:Line:C01379:"
+  function toLineRef(lineId, lineCodes) {
+    // Priorité 1 : code source Navitia (le plus fiable)
+    if (lineCodes && Array.isArray(lineCodes)) {
+      const src = lineCodes.find(c => c.type === 'source');
+      if (src) {
+        const m = src.value.match(/Line:(C[\w-]+)/);
+        if (m) return `STIF:Line::${m[1]}:`;
+      }
+    }
+    // Priorité 2 : extraire depuis l'ID Navitia "line:IDFM:C01379"
+    const m = lineId.match(/IDFM:(C[\w-]+)/);
     return m ? `STIF:Line::${m[1]}:` : null;
   }
 
@@ -380,7 +390,7 @@
         el.appendChild(modeLabel);
         const card=document.createElement('div'); card.className='card';
         linesInMode.forEach(l=>{
-          const info={code:l.code||l.name, color:l.color, commercial_mode:l.commercial_modes?.[0]?.name||''};
+          const info={code:l.code||l.name, color:l.color, commercial_mode:l.commercial_modes?.[0]?.name||'', codes:l.codes||[]};
           // Terminus depuis les routes de la ligne (fiable)
           const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,3).join(' · ');
           const item=document.createElement('div'); item.className='list-item';
@@ -398,7 +408,7 @@
   // puis v2/navitia/stop_areas/{stopAreaId}/lines/{lineId}/stop_points pour les qIds
   async function loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName) {
     state.lineId=lineId; state.lineInfo=lineInfo;
-    state.lineRef=toLineRef(lineId);
+    state.lineRef=toLineRef(lineId, lineInfo.codes);
     showView('directions');
     updateBreadcrumb([
       {label:document.getElementById('search-input').value, fn:'backToSearch()'},
