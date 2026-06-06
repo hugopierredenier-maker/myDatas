@@ -486,12 +486,21 @@
 
       // Pour chaque stop_point, récupérer les routes (directions)
       // On utilise directement les routes associées à chaque stop_point
-      const dirMap = new Map(); // routeId → { routeName, terminus, stopPointId }
+      const dirMap = new Map(); // routeId → { routeName, terminus, stopPointId, stifId }
+
+      // Fonction pour extraire le numéro STIF Q: depuis les codes Navitia
+      function getStifQId(sp) {
+        const codes = sp.codes || [];
+        const qCode = codes.find(c => c.type === 'netex_zder_quay' && /^\d+$/.test(c.value));
+        return qCode ? qCode.value : null;
+      }
+
       stopPoints.forEach(sp => {
+        const stifId = getStifQId(sp);
         (sp.routes || []).forEach(r => {
           const terminus = r.direction?.stop_area?.name || r.name || '?';
           if (!dirMap.has(r.id)) {
-            dirMap.set(r.id, { terminus, stopPointId: sp.id, routeId: r.id });
+            dirMap.set(r.id, { terminus, stopPointId: sp.id, stifId, routeId: r.id });
           }
         });
       });
@@ -519,7 +528,7 @@
       }
 
       const card = document.createElement('div'); card.className = 'card';
-      dirMap.forEach(({ terminus, stopPointId, routeId }) => {
+      dirMap.forEach(({ terminus, stopPointId, stifId, routeId }) => {
         const item = document.createElement('div'); item.className = 'list-item';
         item.innerHTML = `
           <div style="flex-shrink:0;">${lineIcon(lineInfo, 36)}</div>
@@ -527,7 +536,7 @@
             <div class="item-name">→ ${terminus}</div>
           </div>
           <span style="color:var(--muted);font-size:20px;">›</span>`;
-        item.onclick = () => loadDepartures(stopPointId, terminus, stopAreaId, stopAreaName, lineName);
+        item.onclick = () => loadDepartures(stopPointId, stifId, terminus, stopAreaId, stopAreaName, lineName);
         card.appendChild(item);
       });
       el.appendChild(card);
@@ -577,7 +586,7 @@
     return m ? `STIF:Line::${m[1]}:` : null;
   }
 
-  async function loadDepartures(stopPointId, terminus, stopAreaId, stopAreaName, lineName) {
+  async function loadDepartures(stopPointId, stifId, terminus, stopAreaId, stopAreaName, lineName) {
     showView('departures');
     updateBreadcrumb([
       { label: document.getElementById('search-input').value, fn: 'backToSearch()' },
@@ -590,13 +599,15 @@
 
     try {
       const lineRef = toLineRef(state.lineId);
-      const stopStifId = extractStifId(stopPointId) || extractStifId(stopAreaId);
 
-      if (!lineRef || !stopStifId) throw new Error('Impossible de construire les références STIF');
+      // stifId = numéro Q: extrait des codes Navitia (ex: "22036")
+      // fallback sur extraction depuis l'ID si non fourni
+      const resolvedStifId = stifId || extractStifId(stopPointId) || extractStifId(stopAreaId);
 
-      // estimated-timetable : tous les passages temps réel de la ligne
+      if (!lineRef || !resolvedStifId) throw new Error('Impossible de construire les références STIF');
+
       const data = await callProxy('estimated-timetable', { LineRef: lineRef });
-      const departures = extractDeparturesFromET(data, stopStifId, terminus);
+      const departures = extractDeparturesFromET(data, resolvedStifId, terminus);
 
       state.allDepartures = departures;
       renderDepartures(departures, terminus, el);
@@ -612,7 +623,7 @@
   //       .StopPointRef.value  → "STIF:StopPoint:Q:427193:"
   //       .ExpectedDepartureTime
   //       .DepartureStatus
-  function extractDeparturesFromET(data, stopStifId, terminus) {
+  function extractDeparturesFromET(data, resolvedStifId, terminus) {
     const frame = data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]
       ?.EstimatedJourneyVersionFrame?.[0];
     const journeys = frame?.EstimatedVehicleJourney || [];
@@ -620,19 +631,21 @@
     const result = [];
 
     journeys.forEach(vj => {
-      // Destination du journey
-      const destName = vj.DestinationName?.[0]?.value
-        || vj.DestinationShortName?.[0]?.value
-        || '';
-
-      // Filtre direction (souple)
-      if (terminus && destName && !destName.includes(terminus) && !terminus.includes(destName)) return;
 
       const calls = vj.EstimatedCalls?.EstimatedCall || [];
       calls.forEach(call => {
         // Vérifier que c'est bien notre arrêt
         const spRef = call.StopPointRef?.value || '';
-        if (!spRef.includes(stopStifId)) return;
+        if (!spRef.includes(resolvedStifId)) return;
+
+        // Destination depuis DestinationDisplay de l'EstimatedCall (plus fiable que vj.DestinationName)
+        const destName = call.DestinationDisplay?.[0]?.value
+          || vj.DestinationName?.[0]?.value
+          || vj.DestinationShortName?.[0]?.value
+          || '';
+
+        // Filtre direction souple
+        if (terminus && destName && !destName.includes(terminus) && !terminus.includes(destName)) return;
 
         const expectedDep = call.ExpectedDepartureTime || call.ExpectedArrivalTime
           || call.AimedDepartureTime || call.AimedArrivalTime;
