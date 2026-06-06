@@ -12,7 +12,6 @@
       --bg: #f5f4f0; --surface: #ffffff; --border: rgba(0,0,0,0.1);
       --text: #1a1a1a; --muted: #6b6b6b; --accent: #1a56db; --accent-bg: #eef3ff;
       --danger-bg: #fef2f2; --danger-border: #dc2626; --danger-text: #7f1d1d;
-      --warn-bg: #fffbeb; --warn-border: #d97706; --warn-text: #92400e;
       --success: #15803d; --radius: 12px; --radius-sm: 8px;
     }
     @media (prefers-color-scheme: dark) {
@@ -20,7 +19,6 @@
         --bg: #111110; --surface: #1c1c1b; --border: rgba(255,255,255,0.1);
         --text: #f0ede8; --muted: #888885; --accent: #5b8af5; --accent-bg: #1a2540;
         --danger-bg: #2a1010; --danger-border: #dc2626; --danger-text: #fca5a5;
-        --warn-bg: #2a2010; --warn-border: #d97706; --warn-text: #fbbf24;
       }
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -33,15 +31,13 @@
       flex: 1; height: 42px; padding: 0 14px;
       border: 1px solid var(--border); border-radius: var(--radius-sm);
       background: var(--surface); color: var(--text);
-      font-family: inherit; font-size: 14px; outline: none;
-      transition: border-color 0.15s;
+      font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.15s;
     }
     .search-bar input:focus { border-color: var(--accent); }
     .search-bar button {
       height: 42px; padding: 0 18px; border-radius: var(--radius-sm);
       font-family: inherit; font-size: 14px; font-weight: 500;
-      cursor: pointer; border: none; background: var(--accent); color: #fff;
-      transition: opacity 0.15s;
+      cursor: pointer; border: none; background: var(--accent); color: #fff; transition: opacity 0.15s;
     }
     .search-bar button:hover { opacity: 0.9; }
     .search-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -53,22 +49,21 @@
     }
     .hint-chip:hover { border-color: var(--accent); color: var(--accent); }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; }
-    .stop-item {
+    .list-item {
       display: flex; align-items: center; gap: 12px;
       padding: 12px 16px; cursor: pointer;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.12s;
+      border-bottom: 1px solid var(--border); transition: background 0.12s;
     }
-    .stop-item:last-child { border-bottom: none; }
-    .stop-item:hover { background: var(--bg); }
-    .stop-icon {
+    .list-item:last-child { border-bottom: none; }
+    .list-item:hover { background: var(--bg); }
+    .item-icon {
       width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
       background: var(--accent-bg); color: var(--accent);
       display: flex; align-items: center; justify-content: center; font-size: 16px;
     }
-    .stop-name { font-size: 14px; font-weight: 500; }
-    .stop-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .stop-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .item-name { font-size: 14px; font-weight: 500; }
+    .item-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .item-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .badge {
       font-size: 11px; font-weight: 500; padding: 2px 8px;
       border-radius: 4px; border: 1px solid var(--border);
@@ -86,8 +81,7 @@
     .departure-wait.soon { color: var(--success); font-weight: 600; }
     .section-label {
       font-size: 12px; font-weight: 600; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.06em;
-      padding: 0 0 10px;
+      text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 10px;
     }
     .back-btn {
       display: none; align-items: center; gap: 6px;
@@ -109,6 +103,11 @@
       vertical-align: -3px; margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Breadcrumb */
+    .breadcrumb { font-size: 12px; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .breadcrumb span { cursor: pointer; }
+    .breadcrumb span:hover { color: var(--accent); text-decoration: underline; }
+    .breadcrumb .sep { opacity: 0.4; }
   </style>
 </head>
 <body>
@@ -132,8 +131,10 @@
     <span class="hint-chip" onclick="fillAndSearch('Saint-Lazare')">Saint-Lazare</span>
   </div>
 
-  <button class="back-btn" id="back-btn" onclick="backToResults()">← Retour aux résultats</button>
+  <!-- Breadcrumb navigation -->
+  <div class="breadcrumb" id="breadcrumb" style="display:none;"></div>
 
+  <!-- Vue 1 : résultats de recherche (stop_areas) -->
   <div id="view-search">
     <div class="empty" id="search-empty">
       <div class="icon">🔍</div>
@@ -142,12 +143,21 @@
     <div id="search-results"></div>
   </div>
 
+  <!-- Vue 2 : quais / stop_points -->
+  <div id="view-stoppoints" style="display:none;">
+    <div id="stoppoints-content"></div>
+  </div>
+
+  <!-- Vue 3 : passages -->
   <div id="view-departures" style="display:none;">
     <div id="departures-content"></div>
   </div>
 </div>
 
 <script>
+  let currentStopAreaName = '';
+  let currentStopPointName = '';
+
   async function callProxy(endpoint, params = {}) {
     const qs = new URLSearchParams({ endpoint, ...params }).toString();
     const resp = await fetch('/api/prim?' + qs);
@@ -164,6 +174,23 @@
     if (e.key === 'Enter') searchStops();
   });
 
+  function showView(name) {
+    ['search', 'stoppoints', 'departures'].forEach(v => {
+      document.getElementById('view-' + v).style.display = v === name ? 'block' : 'none';
+    });
+  }
+
+  function updateBreadcrumb(items) {
+    const bc = document.getElementById('breadcrumb');
+    if (!items.length) { bc.style.display = 'none'; return; }
+    bc.style.display = 'flex';
+    bc.innerHTML = items.map((item, i) =>
+      i < items.length - 1
+        ? `<span onclick="${item.action}">${item.label}</span><span class="sep">›</span>`
+        : `<strong>${item.label}</strong>`
+    ).join('');
+  }
+
   async function searchStops() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
@@ -172,9 +199,8 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>';
 
-    document.getElementById('view-search').style.display = 'block';
-    document.getElementById('view-departures').style.display = 'none';
-    document.getElementById('back-btn').style.display = 'none';
+    showView('search');
+    updateBreadcrumb([]);
 
     const empty = document.getElementById('search-empty');
     const results = document.getElementById('search-results');
@@ -185,13 +211,13 @@
     try {
       const data = await callProxy('v2/navitia/places', { q, count: 10 });
       const places = (data.places || []).filter(p =>
-        p.embedded_type === 'stop_point' || p.embedded_type === 'stop_area'
+        p.embedded_type === 'stop_area' || p.embedded_type === 'stop_point'
       );
 
       empty.style.display = 'none';
 
       if (!places.length) {
-        empty.innerHTML = '<div class="icon">😕</div>Aucun arrêt trouvé pour « ' + q + ' ».';
+        empty.innerHTML = `<div class="icon">😕</div>Aucun arrêt trouvé pour « ${q} ».`;
         empty.style.display = 'block';
         btn.disabled = false; btn.textContent = 'Rechercher';
         return;
@@ -201,24 +227,24 @@
       card.className = 'card';
 
       places.forEach(p => {
-        const s = p.stop_point || p.stop_area;
+        const s = p.stop_area || p.stop_point;
         if (!s) return;
         const modes = (s.physical_modes || []).map(m => m.name).join(', ') || '';
         const lines = (s.lines || []).slice(0, 6)
           .map(l => `<span class="badge">${l.code || l.name || '?'}</span>`).join('');
 
         const item = document.createElement('div');
-        item.className = 'stop-item';
+        item.className = 'list-item';
         item.innerHTML = `
-          <div class="stop-icon">📍</div>
+          <div class="item-icon">📍</div>
           <div style="flex:1; min-width:0;">
-            <div class="stop-name">${s.name}</div>
-            ${modes ? `<div class="stop-meta">${modes}</div>` : ''}
-            ${lines ? `<div class="stop-lines">${lines}</div>` : ''}
+            <div class="item-name">${s.name}</div>
+            ${modes ? `<div class="item-meta">${modes}</div>` : ''}
+            ${lines ? `<div class="item-lines">${lines}</div>` : ''}
           </div>
           <span style="color:var(--muted); font-size:20px;">›</span>
         `;
-        item.onclick = () => openStop(s, p.embedded_type);
+        item.onclick = () => loadStopPoints(s.id, s.name);
         card.appendChild(item);
       });
 
@@ -232,31 +258,82 @@
     btn.textContent = 'Rechercher';
   }
 
-  async function openStop(stop, type) {
-    document.getElementById('view-search').style.display = 'none';
-    document.getElementById('view-departures').style.display = 'block';
-    document.getElementById('back-btn').style.display = 'flex';
+  async function loadStopPoints(stopAreaId, stopAreaName) {
+    currentStopAreaName = stopAreaName;
+    showView('stoppoints');
+    updateBreadcrumb([
+      { label: document.getElementById('search-input').value, action: 'backToSearch()' },
+      { label: stopAreaName }
+    ]);
+
+    const el = document.getElementById('stoppoints-content');
+    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des quais…</div>';
+
+    try {
+      const data = await callProxy('v2/navitia/stop_areas/' + stopAreaId + '/stop_points', { count: 20 });
+      const points = data.stop_points || [];
+
+      el.innerHTML = `<div class="section-label">Choisir un quai — ${stopAreaName}</div>`;
+
+      if (!points.length) {
+        el.innerHTML += '<div class="empty"><div class="icon">😕</div>Aucun quai trouvé.</div>';
+        return;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      points.forEach(sp => {
+        const lines = (sp.lines || []).slice(0, 6)
+          .map(l => `<span class="badge">${l.code || l.name || '?'}</span>`).join('');
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+          <div class="item-icon">🚉</div>
+          <div style="flex:1; min-width:0;">
+            <div class="item-name">${sp.name}</div>
+            ${lines ? `<div class="item-lines">${lines}</div>` : ''}
+          </div>
+          <span style="color:var(--muted); font-size:20px;">›</span>
+        `;
+        item.onclick = () => loadDepartures(sp.id, sp.name, stopAreaName);
+        card.appendChild(item);
+      });
+
+      el.appendChild(card);
+    } catch (e) {
+      el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
+    }
+  }
+
+  async function loadDepartures(stopPointId, stopPointName, stopAreaName) {
+    currentStopPointName = stopPointName;
+    showView('departures');
+    updateBreadcrumb([
+      { label: document.getElementById('search-input').value, action: 'backToSearch()' },
+      { label: stopAreaName, action: `loadStopPoints('${stopPointId.split(':')[2] ? stopPointId : stopPointId}', '${stopAreaName.replace(/'/g, "\\'")}')` },
+      { label: stopPointName }
+    ]);
 
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des passages…</div>';
 
-    // Pour les stop_area on utilise StopArea, pour stop_point on utilise StopPoint
-    const monitoringRef = type === 'stop_area'
-      ? stop.id.replace('stop_area:', 'STIF:StopArea:SP:').replace('IDFM:', '')
-      : stop.id;
+    // Conversion : stop_point:IDFM:XXXXX → STIF:StopPoint:Q:XXXXX:
+    const numericId = stopPointId.split(':').pop();
+    const monitoringRef = `STIF:StopPoint:Q:${numericId}:`;
 
     try {
       const data = await callProxy('stop-monitoring', {
-        MonitoringRef: stop.id,
+        MonitoringRef: monitoringRef,
         MaximumStopVisits: 20
       });
 
       const visits = data.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
 
-      el.innerHTML = `<div class="section-label">📍 ${stop.name}</div>`;
+      el.innerHTML = `<div class="section-label">📍 ${stopPointName}</div>`;
 
       if (!visits.length) {
-        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé pour cet arrêt.</div>';
+        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé.</div>';
         return;
       }
 
@@ -296,10 +373,9 @@
     }
   }
 
-  function backToResults() {
-    document.getElementById('view-search').style.display = 'block';
-    document.getElementById('view-departures').style.display = 'none';
-    document.getElementById('back-btn').style.display = 'none';
+  function backToSearch() {
+    showView('search');
+    updateBreadcrumb([]);
   }
 
   function formatTime(iso) {
