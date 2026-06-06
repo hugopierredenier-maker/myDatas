@@ -6,15 +6,15 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const url = new URL(req.url, 'http://localhost');
-  const params = Object.fromEntries(url.searchParams.entries());
-  const { endpoint, ...rest } = params;
+  const endpoint = url.searchParams.get('endpoint');
+  url.searchParams.delete('endpoint');
+  const queryString = url.searchParams.toString();
 
   if (!endpoint) return res.status(400).json({ error: 'endpoint manquant' });
 
-  const queryString = new URLSearchParams(rest).toString();
   const primUrl = `https://prim.iledefrance-mobilites.fr/marketplace/${endpoint}${queryString ? '?' + queryString : ''}`;
 
-  console.log('Calling PRIM:', primUrl);
+  console.log('→ PRIM URL:', primUrl);
 
   try {
     const response = await fetch(primUrl, {
@@ -24,6 +24,7 @@ export default async function handler(req, res) {
       },
     });
     const text = await response.text();
+    console.log('← Status:', response.status, text.slice(0, 200));
     try {
       return res.status(response.status).json(JSON.parse(text));
     } catch {
