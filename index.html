@@ -1,248 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transports IDF — autour de moi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<h2 class="sr-only">Tableau de bord transports Île-de-France Mobilités — prochains passages, arrêts proches et perturbations</h2>
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --accent: #1a56db;
+      --accent-bg: #eef3ff;
+      --warn-bg: #fffbeb;
+      --warn-border: #d97706;
+      --warn-text: #92400e;
+      --danger-bg: #fef2f2;
+      --danger-border: #dc2626;
+      --danger-text: #7f1d1d;
+      --success: #15803d;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
 
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font-sans); }
-  .header { padding: 1.5rem 0 1rem; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 1.5rem; }
-  .header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
-  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
-  .api-bar { display: flex; gap: 8px; margin-bottom: 1.5rem; align-items: center; }
-  .api-bar input { flex: 1; font-size: 13px; }
-  .api-bar button { white-space: nowrap; font-size: 13px; padding: 0 16px; height: 36px; cursor: pointer; }
-  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-  .section-title i { font-size: 16px; }
-  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 8px; }
-  .stop-card { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: background 0.15s; border-radius: var(--border-radius-lg); }
-  .stop-card:hover { background: var(--color-background-secondary); }
-  .stop-card .stop-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; background: var(--color-background-info); color: var(--color-text-info); }
-  .stop-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
-  .stop-meta { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
-  .line-badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 4px; margin-top: 4px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
-  .departure-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
-  .departure-row:last-child { border-bottom: none; }
-  .departure-direction { font-size: 14px; color: var(--color-text-primary); }
-  .departure-line { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
-  .departure-time { font-size: 16px; font-weight: 500; color: var(--color-text-primary); text-align: right; min-width: 70px; }
-  .departure-time small { display: block; font-size: 11px; font-weight: 400; color: var(--color-text-secondary); }
-  .alert-card { border-left: 3px solid; border-radius: var(--border-radius-md); padding: 10px 14px; margin-bottom: 8px; }
-  .alert-card.warning { border-color: #BA7517; background: #FAEEDA; }
-  .alert-card.danger { border-color: #A32D2D; background: #FCEBEB; }
-  .alert-title { font-size: 13px; font-weight: 500; }
-  .alert-body { font-size: 12px; margin-top: 4px; }
-  .alert-card.warning .alert-title { color: #633806; }
-  .alert-card.warning .alert-body { color: #854F0B; }
-  .alert-card.danger .alert-title { color: #501313; }
-  .alert-card.danger .alert-body { color: #791F1F; }
-  .btn-loc { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; padding: 0 16px; height: 36px; }
-  .empty-state { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 14px; }
-  .empty-state i { font-size: 32px; display: block; margin-bottom: 8px; }
-  .tab-bar { display: flex; gap: 4px; margin-bottom: 1.25rem; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 4px; }
-  .tab { flex: 1; text-align: center; padding: 6px 0; font-size: 13px; border-radius: 6px; cursor: pointer; color: var(--color-text-secondary); border: none; background: transparent; }
-  .tab.active { background: var(--color-background-primary); color: var(--color-text-primary); font-weight: 500; border: 0.5px solid var(--color-border-tertiary); }
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--color-border-tertiary); border-top-color: var(--color-text-secondary); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -3px; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #back-btn { display: none; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; margin-bottom: 1rem; color: var(--color-text-secondary); background: none; border: none; padding: 0; }
-  #back-btn:hover { color: var(--color-text-primary); }
-  .coord-info { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
-</style>
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111110;
+        --surface: #1c1c1b;
+        --border: rgba(255,255,255,0.1);
+        --text: #f0ede8;
+        --muted: #888885;
+        --accent: #5b8af5;
+        --accent-bg: #1a2540;
+        --warn-bg: #2a2010;
+        --warn-border: #d97706;
+        --warn-text: #fbbf24;
+        --danger-bg: #2a1010;
+        --danger-border: #dc2626;
+        --danger-text: #fca5a5;
+      }
+    }
 
-<div class="header">
-  <h1><i class="ti ti-train" aria-hidden="true" style="font-size:20px; vertical-align:-2px; margin-right:8px;"></i>Transports IDF — autour de moi</h1>
-  <p>Prochains passages, arrêts proches, perturbations · API PRIM</p>
-</div>
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
 
-<div class="api-bar">
-  <input type="password" id="api-key" placeholder="Clé API PRIM (apikey)" />
-  <button class="btn-loc" id="loc-btn" onclick="locateMe()"><i class="ti ti-current-location" aria-hidden="true"></i> Localiser</button>
-</div>
+    .app { max-width: 600px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 
-<div id="coord-info" class="coord-info" style="display:none;">
-  <i class="ti ti-map-pin" aria-hidden="true"></i>
-  <span id="coord-text"></span>
-</div>
+    header { margin-bottom: 2rem; }
+    header h1 { font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    header h1 svg { width: 28px; height: 28px; flex-shrink: 0; }
+    header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-<div class="tab-bar" id="tab-bar" style="display:none;">
-  <button class="tab active" onclick="showTab('stops')"><i class="ti ti-map-pin" aria-hidden="true"></i> Arrêts proches</button>
-  <button class="tab" onclick="showTab('departures')"><i class="ti ti-clock" aria-hidden="true"></i> Passages</button>
-  <button class="tab" onclick="showTab('alerts')"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Perturbations</button>
-</div>
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0 18px; height: 40px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: var(--bg); }
+    .btn:active { transform: scale(0.98); }
+    .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+    .btn.primary:hover { opacity: 0.9; }
+    .btn svg { width: 16px; height: 16px; }
 
-<button id="back-btn" onclick="backToStops()"><i class="ti ti-arrow-left" aria-hidden="true"></i> Retour aux arrêts</button>
+    .loc-bar { display: flex; gap: 10px; margin-bottom: 1rem; }
 
-<div id="tab-stops">
-  <div class="empty-state" id="stops-empty">
-    <i class="ti ti-current-location" aria-hidden="true"></i>
-    Clique sur « Localiser » pour trouver les arrêts proches.
+    .coord-pill {
+      display: none; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 12px;
+      margin-bottom: 1.25rem;
+    }
+    .coord-pill svg { width: 12px; height: 12px; }
+
+    .tab-bar {
+      display: none; gap: 4px; margin-bottom: 1.25rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 4px;
+    }
+    .tab {
+      flex: 1; text-align: center; padding: 7px 0;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      border-radius: 6px; cursor: pointer;
+      color: var(--muted); border: none; background: transparent;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .back-btn {
+      display: none; align-items: center; gap: 6px;
+      font-family: inherit; font-size: 13px; color: var(--muted);
+      background: none; border: none; cursor: pointer; margin-bottom: 1rem;
+      padding: 0;
+    }
+    .back-btn:hover { color: var(--text); }
+    .back-btn svg { width: 14px; height: 14px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .stop-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .stop-item:last-child { border-bottom: none; }
+    .stop-item:hover { background: var(--bg); }
+
+    .stop-icon {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent-bg); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stop-icon svg { width: 16px; height: 16px; }
+
+    .stop-name { font-size: 14px; font-weight: 500; }
+    .stop-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .stop-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+    .badge {
+      font-size: 11px; font-weight: 500; padding: 2px 8px;
+      border-radius: 4px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted);
+    }
+
+    .chevron { margin-left: auto; color: var(--muted); flex-shrink: 0; }
+    .chevron svg { width: 14px; height: 14px; }
+
+    .departure-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+    }
+    .departure-item:last-child { border-bottom: none; }
+    .departure-dest { font-size: 14px; font-weight: 500; }
+    .departure-line { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .departure-time { font-size: 18px; font-weight: 600; text-align: right; }
+    .departure-wait { font-size: 12px; color: var(--muted); text-align: right; margin-top: 2px; }
+    .departure-wait.soon { color: var(--success); font-weight: 500; }
+
+    .section-label {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 0 0 10px;
+    }
+
+    .alert-item {
+      border-left: 3px solid; border-radius: var(--radius-sm);
+      padding: 10px 14px; margin-bottom: 8px;
+    }
+    .alert-item.warning { border-color: var(--warn-border); background: var(--warn-bg); }
+    .alert-item.danger { border-color: var(--danger-border); background: var(--danger-bg); }
+    .alert-item .alert-title { font-size: 13px; font-weight: 600; }
+    .alert-item.warning .alert-title { color: var(--warn-text); }
+    .alert-item.danger .alert-title { color: var(--danger-text); }
+    .alert-item .alert-body { font-size: 12px; margin-top: 4px; line-height: 1.5; }
+    .alert-item.warning .alert-body { color: var(--warn-text); opacity: 0.85; }
+    .alert-item.danger .alert-body { color: var(--danger-text); opacity: 0.85; }
+
+    .empty {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--muted); font-size: 14px;
+    }
+    .empty svg { width: 40px; height: 40px; margin: 0 auto 12px; display: block; opacity: 0.4; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid var(--border); border-top-color: var(--muted);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: -3px; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: var(--danger-bg); border: 1px solid var(--danger-border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      font-size: 13px; color: var(--danger-text);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M3 17h18M5 17V7a2 2 0 012-2h10a2 2 0 012 2v10M9 17v2m6-2v2M7 9h10"/>
+      </svg>
+      Transports IDF
+    </h1>
+    <p>Arrêts proches · Prochains passages · Perturbations</p>
+  </header>
+
+  <div class="loc-bar">
+    <button class="btn primary" id="loc-btn" onclick="locateMe()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+      </svg>
+      Localiser
+    </button>
   </div>
-  <div id="stops-list"></div>
-</div>
 
-<div id="tab-departures" style="display:none;">
-  <div id="departures-content"></div>
-</div>
+  <div class="coord-pill" id="coord-pill">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+    <span id="coord-text"></span>
+  </div>
 
-<div id="tab-alerts" style="display:none;">
-  <div id="alerts-content"><div class="empty-state"><i class="ti ti-bell-off" aria-hidden="true"></i>Localise-toi d'abord.</div></div>
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab active" onclick="showTab('stops')">Arrêts proches</button>
+    <button class="tab" onclick="showTab('departures')">Passages</button>
+    <button class="tab" onclick="showTab('alerts')">Perturbations</button>
+  </div>
+
+  <button class="back-btn" id="back-btn" onclick="backToStops()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+    Retour aux arrêts
+  </button>
+
+  <!-- Onglet arrêts -->
+  <div id="tab-stops">
+    <div class="empty" id="stops-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Clique sur « Localiser » pour trouver les arrêts proches.
+    </div>
+    <div id="stops-list" class="card" style="display:none;"></div>
+  </div>
+
+  <!-- Onglet passages -->
+  <div id="tab-departures" style="display:none;">
+    <div id="departures-content"></div>
+  </div>
+
+  <!-- Onglet alertes -->
+  <div id="tab-alerts" style="display:none;">
+    <div id="alerts-content">
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        Localise-toi d'abord.
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-let currentLat, currentLon, apiKey, selectedStop;
-const PRIM = 'https://prim.iledefrance-mobilites.fr/marketplace';
+  let currentLat, currentLon;
 
-function getKey() { return document.getElementById('api-key').value.trim(); }
+  // Appels via le proxy /api/prim
+  async function callProxy(endpoint, params = {}) {
+    const qs = new URLSearchParams({ endpoint, ...params }).toString();
+    const resp = await fetch('/api/prim?' + qs);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  }
 
-function showTab(name) {
-  ['stops','departures','alerts'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t === name ? 'block' : 'none';
-  });
-  document.querySelectorAll('.tab').forEach((el, i) => {
-    el.classList.toggle('active', ['stops','departures','alerts'][i] === name);
-  });
-}
-
-function locateMe() {
-  const btn = document.getElementById('loc-btn');
-  btn.innerHTML = '<span class="spinner"></span> Localisation...';
-  btn.disabled = true;
-  if (!navigator.geolocation) { alert("Géolocalisation non disponible."); btn.innerHTML = '<i class="ti ti-current-location"></i> Localiser'; btn.disabled = false; return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    currentLat = pos.coords.latitude;
-    currentLon = pos.coords.longitude;
-    document.getElementById('coord-info').style.display = 'flex';
-    document.getElementById('coord-text').textContent = currentLat.toFixed(5) + ', ' + currentLon.toFixed(5);
-    document.getElementById('tab-bar').style.display = 'flex';
-    btn.innerHTML = '<i class="ti ti-refresh"></i> Actualiser';
-    btn.disabled = false;
-    loadStops();
-    loadAlerts();
-  }, err => {
-    alert("Impossible de vous localiser : " + err.message);
-    btn.innerHTML = '<i class="ti ti-current-location"></i> Localiser';
-    btn.disabled = false;
-  });
-}
-
-async function fetchPRIM(path) {
-  const key = getKey();
-  if (!key) { alert("Saisis ta clé API PRIM d'abord."); throw new Error("no key"); }
-  const resp = await fetch(PRIM + path, { headers: { 'apikey': key, 'Accept': 'application/json' } });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
-  return resp.json();
-}
-
-async function loadStops() {
-  const list = document.getElementById('stops-list');
-  const empty = document.getElementById('stops-empty');
-  empty.innerHTML = '<span class="spinner"></span> Recherche des arrêts proches...';
-  list.innerHTML = '';
-  try {
-    const data = await fetchPRIM('/navitia/v1/coverage/fr-idf/coords/' + currentLon + ';' + currentLat + '/stop_points?distance=500&count=15');
-    const stops = data.stop_points || [];
-    empty.style.display = 'none';
-    if (!stops.length) { empty.textContent = 'Aucun arrêt trouvé dans un rayon de 500m.'; empty.style.display = 'block'; return; }
-    stops.slice(0, 12).forEach(s => {
-      const dist = Math.round(haversine(currentLat, currentLon, s.coord.lat, s.coord.lon));
-      const modes = (s.physical_modes || []).map(m => m.name).join(', ') || 'Transport';
-      const lines = (s.lines || []).slice(0, 5).map(l => '<span class="line-badge">' + (l.code || l.name || '?') + '</span>').join('');
-      const div = document.createElement('div');
-      div.className = 'card stop-card';
-      div.innerHTML = `
-        <div class="stop-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
-        <div style="flex:1;">
-          <div class="stop-name">${s.name}</div>
-          <div class="stop-meta">${modes} · ${dist} m</div>
-          <div>${lines}</div>
-        </div>
-        <i class="ti ti-chevron-right" aria-hidden="true" style="color:var(--color-text-secondary); align-self:center;"></i>
-      `;
-      div.onclick = () => openStop(s);
-      list.appendChild(div);
+  function showTab(name) {
+    ['stops', 'departures', 'alerts'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
     });
-  } catch(e) {
-    empty.innerHTML = '<i class="ti ti-alert-circle" aria-hidden="true" style="font-size:24px; display:block; margin-bottom:8px;"></i>Erreur : ' + e.message + '<br><span style="font-size:12px;">Vérifie ta clé API.</span>';
+    document.querySelectorAll('.tab').forEach((el, i) => {
+      el.classList.toggle('active', ['stops', 'departures', 'alerts'][i] === name);
+    });
+  }
+
+  function locateMe() {
+    const btn = document.getElementById('loc-btn');
+    btn.innerHTML = '<span class="spinner"></span> Localisation…';
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentLat = pos.coords.latitude;
+      currentLon = pos.coords.longitude;
+      const pill = document.getElementById('coord-pill');
+      pill.style.display = 'flex';
+      document.getElementById('coord-text').textContent =
+        currentLat.toFixed(5) + ', ' + currentLon.toFixed(5);
+      document.getElementById('tab-bar').style.display = 'flex';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Actualiser`;
+      btn.disabled = false;
+      loadStops();
+      loadAlerts();
+    }, err => {
+      alert('Localisation impossible : ' + err.message);
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg> Localiser`;
+      btn.disabled = false;
+    });
+  }
+
+  async function loadStops() {
+    const list = document.getElementById('stops-list');
+    const empty = document.getElementById('stops-empty');
+    empty.innerHTML = '<span class="spinner"></span> Recherche des arrêts proches…';
     empty.style.display = 'block';
+    list.style.display = 'none';
+    list.innerHTML = '';
+    try {
+      const endpoint = 'navitia/v1/coverage/fr-idf/coords/' + currentLon + ';' + currentLat + '/stop_points';
+      const data = await callProxy(endpoint, { distance: 500, count: 15 });
+      const stops = data.stop_points || [];
+      empty.style.display = 'none';
+      if (!stops.length) {
+        empty.textContent = 'Aucun arrêt trouvé dans un rayon de 500m.';
+        empty.style.display = 'block';
+        return;
+      }
+      stops.slice(0, 12).forEach(s => {
+        const dist = Math.round(haversine(currentLat, currentLon, s.coord.lat, s.coord.lon));
+        const modes = (s.physical_modes || []).map(m => m.name).join(', ') || 'Transport';
+        const lines = (s.lines || []).slice(0, 6)
+          .map(l => `<span class="badge">${l.code || l.name || '?'}</span>`).join('');
+        const item = document.createElement('div');
+        item.className = 'stop-item';
+        item.innerHTML = `
+          <div class="stop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></div>
+          <div style="flex:1; min-width:0;">
+            <div class="stop-name">${s.name}</div>
+            <div class="stop-meta">${modes} · ${dist} m</div>
+            <div class="stop-lines">${lines}</div>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+        `;
+        item.onclick = () => openStop(s);
+        list.appendChild(item);
+      });
+      list.style.display = 'block';
+    } catch (e) {
+      empty.innerHTML = `<div class="error-box">Erreur : ${e.message}<br><small>Vérifie que le proxy est bien déployé et que la clé API est configurée.</small></div>`;
+      empty.style.display = 'block';
+    }
   }
-}
 
-async function openStop(stop) {
-  selectedStop = stop;
-  showTab('departures');
-  document.getElementById('back-btn').style.display = 'flex';
-  const el = document.getElementById('departures-content');
-  el.innerHTML = '<div class="empty-state"><span class="spinner"></span> Chargement des passages...</div>';
-  try {
-    const data = await fetchPRIM('/stop-monitoring?MonitoringRef=' + encodeURIComponent(stop.id) + '&MaximumStopVisits=20');
-    const visits = (data.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit) || [];
-    el.innerHTML = '<div class="section-title"><i class="ti ti-clock" aria-hidden="true"></i>' + stop.name + '</div>';
-    if (!visits.length) { el.innerHTML += '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>Aucun passage trouvé.</div>'; return; }
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.style.padding = '0 1.25rem';
-    visits.forEach(v => {
-      const j = v.MonitoredVehicleJourney;
-      const call = j.MonitoredCall;
-      const aimed = call?.AimedDepartureTime || call?.AimedArrivalTime;
-      const expected = call?.ExpectedDepartureTime || call?.ExpectedArrivalTime || aimed;
-      const dest = (j.DestinationName?.[0]?.value) || (j.DirectionName?.[0]?.value) || '?';
-      const lineName = j.PublishedLineName?.[0]?.value || '?';
-      const timeStr = expected ? formatTime(expected) : '—';
-      const waitMin = expected ? Math.round((new Date(expected) - new Date()) / 60000) : null;
-      const waitLabel = waitMin !== null ? (waitMin <= 0 ? 'à quai' : waitMin + ' min') : '';
-      const row = document.createElement('div');
-      row.className = 'departure-row';
-      row.innerHTML = `
-        <div>
-          <div class="departure-direction">${dest}</div>
-          <div class="departure-line"><span class="line-badge">${lineName}</span></div>
-        </div>
-        <div class="departure-time">${timeStr}<small>${waitLabel}</small></div>
-      `;
-      card.appendChild(row);
-    });
-    el.appendChild(card);
-  } catch(e) {
-    el.innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle" aria-hidden="true"></i>Erreur : ' + e.message + '</div>';
+  async function openStop(stop) {
+    showTab('departures');
+    document.getElementById('back-btn').style.display = 'flex';
+    const el = document.getElementById('departures-content');
+    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des passages…</div>';
+    try {
+      const data = await callProxy('stop-monitoring', { MonitoringRef: stop.id, MaximumStopVisits: 20 });
+      const visits = data.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
+      el.innerHTML = `<div class="section-label">${stop.name}</div>`;
+      if (!visits.length) {
+        el.innerHTML += '<div class="empty">Aucun passage trouvé pour cet arrêt.</div>';
+        return;
+      }
+      const card = document.createElement('div');
+      card.className = 'card';
+      visits.forEach(v => {
+        const j = v.MonitoredVehicleJourney;
+        const call = j.MonitoredCall;
+        const expected = call?.ExpectedDepartureTime || call?.AimedDepartureTime || call?.ExpectedArrivalTime || call?.AimedArrivalTime;
+        const dest = j.DestinationName?.[0]?.value || j.DirectionName?.[0]?.value || '?';
+        const lineName = j.PublishedLineName?.[0]?.value || '?';
+        const timeStr = expected ? formatTime(expected) : '—';
+        const waitMin = expected ? Math.round((new Date(expected) - Date.now()) / 60000) : null;
+        const waitLabel = waitMin !== null ? (waitMin <= 0 ? 'À quai' : waitMin + ' min') : '';
+        const soonClass = waitMin !== null && waitMin <= 2 ? ' soon' : '';
+        const item = document.createElement('div');
+        item.className = 'departure-item';
+        item.innerHTML = `
+          <div>
+            <div class="departure-dest">${dest}</div>
+            <div class="departure-line"><span class="badge">${lineName}</span></div>
+          </div>
+          <div>
+            <div class="departure-time">${timeStr}</div>
+            <div class="departure-wait${soonClass}">${waitLabel}</div>
+          </div>
+        `;
+        card.appendChild(item);
+      });
+      el.appendChild(card);
+    } catch (e) {
+      el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
+    }
   }
-}
 
-async function loadAlerts() {
-  const el = document.getElementById('alerts-content');
-  el.innerHTML = '<div class="empty-state"><span class="spinner"></span> Chargement des perturbations...</div>';
-  try {
-    const data = await fetchPRIM('/general-message');
-    const msgs = data.Siri?.ServiceDelivery?.GeneralMessageDelivery?.[0]?.InfoMessage || [];
-    el.innerHTML = '';
-    if (!msgs.length) { el.innerHTML = '<div class="empty-state"><i class="ti ti-circle-check" aria-hidden="true"></i>Aucune perturbation en cours.</div>'; return; }
-    msgs.slice(0, 20).forEach(m => {
-      const content = m.Content?.[0]?.Message?.[0]?.MessageText?.value || m.InfoMessageIdentifier?.value || 'Perturbation';
-      const channel = m.InfoChannelRef?.value || '';
-      const severity = channel === 'Perturbation' ? 'danger' : 'warning';
-      const div = document.createElement('div');
-      div.className = 'alert-card ' + severity;
-      div.innerHTML = `<div class="alert-title"><i class="ti ti-alert-triangle" aria-hidden="true" style="margin-right:4px;"></i>${channel || 'Information'}</div><div class="alert-body">${content}</div>`;
-      el.appendChild(div);
-    });
-  } catch(e) {
-    el.innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle" aria-hidden="true"></i>Erreur : ' + e.message + '</div>';
+  async function loadAlerts() {
+    const el = document.getElementById('alerts-content');
+    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des perturbations…</div>';
+    try {
+      const data = await callProxy('general-message');
+      const msgs = data.Siri?.ServiceDelivery?.GeneralMessageDelivery?.[0]?.InfoMessage || [];
+      el.innerHTML = '';
+      if (!msgs.length) {
+        el.innerHTML = '<div class="empty">✓ Aucune perturbation en cours.</div>';
+        return;
+      }
+      msgs.slice(0, 20).forEach(m => {
+        const content = m.Content?.[0]?.Message?.[0]?.MessageText?.value || 'Information trafic';
+        const channel = m.InfoChannelRef?.value || '';
+        const severity = channel === 'Perturbation' ? 'danger' : 'warning';
+        const div = document.createElement('div');
+        div.className = 'alert-item ' + severity;
+        div.innerHTML = `<div class="alert-title">${channel || 'Information'}</div><div class="alert-body">${content}</div>`;
+        el.appendChild(div);
+      });
+    } catch (e) {
+      el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
+    }
   }
-}
 
-function backToStops() {
-  showTab('stops');
-  document.getElementById('back-btn').style.display = 'none';
-}
+  function backToStops() {
+    showTab('stops');
+    document.getElementById('back-btn').style.display = 'none';
+  }
 
-function formatTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
+  function formatTime(iso) {
+    return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
 
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
 </script>
+</body>
+</html>
