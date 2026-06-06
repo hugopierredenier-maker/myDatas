@@ -69,11 +69,44 @@
       border-radius: 4px; border: 1px solid var(--border);
       background: var(--bg); color: var(--muted);
     }
-    /* Badge coloré avec couleur de ligne */
     .badge-line {
       font-size: 11px; font-weight: 700; padding: 2px 9px;
       border-radius: 4px; display: inline-block;
     }
+    /* Direction picker */
+    .direction-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; cursor: pointer;
+      border-bottom: 1px solid var(--border); transition: background 0.12s;
+    }
+    .direction-item:last-child { border-bottom: none; }
+    .direction-item:hover { background: var(--bg); }
+    .direction-icon {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; letter-spacing: -0.3px;
+    }
+    .direction-info { flex: 1; min-width: 0; }
+    .direction-terminus { font-size: 14px; font-weight: 600; }
+    .direction-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .direction-count {
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      background: var(--accent-bg); padding: 3px 10px; border-radius: 99px;
+      flex-shrink: 0;
+    }
+    /* Filtre direction actif dans la vue départs */
+    .filter-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--accent-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-bar-label { font-size: 12px; color: var(--accent); font-weight: 500; }
+    .filter-bar-clear {
+      font-size: 12px; color: var(--accent); cursor: pointer;
+      background: none; border: none; font-family: inherit; font-weight: 600;
+      padding: 0; text-decoration: underline;
+    }
+    /* Departures */
     .departure-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 16px; border-bottom: 1px solid var(--border);
@@ -159,15 +192,24 @@
     <div id="stoppoints-content"></div>
   </div>
 
-  <!-- Vue 3 : passages -->
+  <!-- Vue 2.5 : choix de la direction -->
+  <div id="view-directions" style="display:none;">
+    <div id="directions-content"></div>
+  </div>
+
+  <!-- Vue 3 : passages filtrés -->
   <div id="view-departures" style="display:none;">
     <div id="departures-content"></div>
   </div>
 </div>
 
 <script>
-  let currentStopAreaId = '';
+  let currentStopAreaId   = '';
   let currentStopAreaName = '';
+  let currentStopPointId  = '';
+  let currentStopPointName = '';
+  // Tous les départs chargés (pour le filtre côté client)
+  let allDepartures = [];
 
   async function callProxy(endpoint, params = {}) {
     const qs = new URLSearchParams({ endpoint, ...params }).toString();
@@ -186,7 +228,7 @@
   });
 
   function showView(name) {
-    ['search', 'stoppoints', 'departures'].forEach(v => {
+    ['search', 'stoppoints', 'directions', 'departures'].forEach(v => {
       document.getElementById('view-' + v).style.display = v === name ? 'block' : 'none';
     });
   }
@@ -202,10 +244,8 @@
     ).join('');
   }
 
-  // Parse le format Navitia "20260606T175027" → Date JS
   function parseNavitiaDate(str) {
     if (!str) return null;
-    // format : YYYYMMDDTHHmmss
     const y = str.slice(0,4), mo = str.slice(4,6), d = str.slice(6,8);
     const h = str.slice(9,11), mi = str.slice(11,13), s = str.slice(13,15);
     return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}`);
@@ -216,7 +256,6 @@
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  // Calcule une couleur de texte (noir/blanc) lisible sur un fond hex
   function textColor(hex) {
     const r = parseInt(hex.slice(0,2),16);
     const g = parseInt(hex.slice(2,4),16);
@@ -224,6 +263,16 @@
     return (r*299 + g*587 + b*114) / 1000 > 128 ? '#000000' : '#ffffff';
   }
 
+  function makeBadge(info) {
+    const lineColor = info.color ? info.color.replace('#','') : null;
+    if (lineColor) {
+      const fg = textColor(lineColor);
+      return `<span class="badge-line" style="background:#${lineColor};color:${fg};">${info.code || '?'}</span>`;
+    }
+    return `<span class="badge">${info.code || '?'}</span>`;
+  }
+
+  // ─── Vue 1 : recherche ───────────────────────────────────────────────────────
   async function searchStops() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
@@ -291,8 +340,9 @@
     btn.textContent = 'Rechercher';
   }
 
+  // ─── Vue 2 : quais ───────────────────────────────────────────────────────────
   async function loadStopPoints(stopAreaId, stopAreaName) {
-    currentStopAreaId = stopAreaId;
+    currentStopAreaId   = stopAreaId;
     currentStopAreaName = stopAreaName;
     showView('stoppoints');
     updateBreadcrumb([
@@ -318,15 +368,14 @@
       card.className = 'card';
 
       points.forEach(sp => {
-        const lines = (sp.lines || []).slice(0, 6)
-          .map(l => {
-            if (l.color) {
-              const bg = l.color.replace('#','');
-              const fg = textColor(bg);
-              return `<span class="badge-line" style="background:#${bg};color:${fg};">${l.code || l.name || '?'}</span>`;
-            }
-            return `<span class="badge">${l.code || l.name || '?'}</span>`;
-          }).join('');
+        const lines = (sp.lines || []).slice(0, 6).map(l => {
+          if (l.color) {
+            const bg = l.color.replace('#','');
+            const fg = textColor(bg);
+            return `<span class="badge-line" style="background:#${bg};color:${fg};">${l.code || l.name || '?'}</span>`;
+          }
+          return `<span class="badge">${l.code || l.name || '?'}</span>`;
+        }).join('');
 
         const item = document.createElement('div');
         item.className = 'list-item';
@@ -338,7 +387,7 @@
           </div>
           <span style="color:var(--muted); font-size:20px;">›</span>
         `;
-        item.onclick = () => loadDepartures(sp.id, sp.name, stopAreaId, stopAreaName);
+        item.onclick = () => loadDirections(sp.id, sp.name, stopAreaId, stopAreaName);
         card.appendChild(item);
       });
 
@@ -348,80 +397,89 @@
     }
   }
 
-  async function loadDepartures(stopPointId, stopPointName, stopAreaId, stopAreaName) {
-    showView('departures');
+  // ─── Vue 2.5 : choix de la direction ─────────────────────────────────────────
+  async function loadDirections(stopPointId, stopPointName, stopAreaId, stopAreaName) {
+    currentStopPointId   = stopPointId;
+    currentStopPointName = stopPointName;
+    showView('directions');
     updateBreadcrumb([
       { label: document.getElementById('search-input').value, action: 'backToSearch()' },
       { label: stopAreaName, action: `loadStopPoints('${stopAreaId}', '${stopAreaName.replace(/'/g,"\\'")}')` },
       { label: stopPointName }
     ]);
 
-    const el = document.getElementById('departures-content');
-    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des passages…</div>';
+    const el = document.getElementById('directions-content');
+    el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des directions…</div>';
 
     try {
-      // ✅ Endpoint Navitia departures — format correct
       const data = await callProxy(
         'v2/navitia/stop_points/' + stopPointId + '/departures',
-        { count: 20 }
+        { count: 50 }
       );
 
-      const departures = data.departures || [];
+      allDepartures = data.departures || [];
+      el.innerHTML = `<div class="section-label">Choisir une direction — ${stopPointName}</div>`;
 
-      el.innerHTML = `<div class="section-label">📍 ${stopPointName}</div>`;
-
-      if (!departures.length) {
-        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé.</div>';
+      if (!allDepartures.length) {
+        el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun départ trouvé.</div>';
         return;
       }
 
+      // Regrouper par (lineCode + direction) pour lister les terminus uniques
+      const dirMap = new Map();
+      allDepartures.forEach(dep => {
+        const info = dep.display_informations || {};
+        const key  = (info.code || '?') + '||' + (info.direction || info.headsign || '?');
+        if (!dirMap.has(key)) {
+          dirMap.set(key, { info, count: 0, next: null });
+        }
+        const entry = dirMap.get(key);
+        entry.count++;
+        if (!entry.next) {
+          const sdt = dep.stop_date_time || {};
+          entry.next = parseNavitiaDate(sdt.departure_date_time || sdt.arrival_date_time);
+        }
+      });
+
+      // Option "Toutes les directions"
       const card = document.createElement('div');
       card.className = 'card';
 
-      departures.forEach(dep => {
-        const info = dep.display_informations || {};
-        const sdt  = dep.stop_date_time || {};
+      const allItem = document.createElement('div');
+      allItem.className = 'direction-item';
+      allItem.innerHTML = `
+        <div class="direction-icon" style="background:var(--accent-bg);color:var(--accent);">✦</div>
+        <div class="direction-info">
+          <div class="direction-terminus">Toutes les directions</div>
+          <div class="direction-sub">${allDepartures.length} prochain${allDepartures.length > 1 ? 's' : ''} passage${allDepartures.length > 1 ? 's' : ''}</div>
+        </div>
+        <span style="color:var(--muted); font-size:20px;">›</span>
+      `;
+      allItem.onclick = () => showDepartures(null, stopAreaId, stopAreaName);
+      card.appendChild(allItem);
 
-        // ✅ Parsing du format Navitia "20260606T175027"
-        const dateStr = sdt.departure_date_time || sdt.arrival_date_time;
-        const date = parseNavitiaDate(dateStr);
-        const timeStr = formatTime(date);
-
-        const waitMin = date ? Math.round((date - Date.now()) / 60000) : null;
-        let waitLabel = '';
-        let waitClass = '';
-        if (waitMin !== null) {
-          if (waitMin <= 0)      { waitLabel = 'À quai';       waitClass = 'quai'; }
-          else if (waitMin <= 1) { waitLabel = '1 min';        waitClass = 'soon'; }
-          else                   { waitLabel = waitMin + ' min'; waitClass = waitMin <= 4 ? 'soon' : ''; }
-        }
-
-        // Couleur de la ligne
+      // Une ligne par terminus distinct
+      dirMap.forEach((entry, key) => {
+        const { info, count, next } = entry;
         const lineColor = info.color ? info.color.replace('#','') : null;
-        const lineFg    = lineColor ? textColor(lineColor) : null;
-        const lineBadge = lineColor
-          ? `<span class="badge-line" style="background:#${lineColor};color:${lineFg};">${info.code || '?'}</span>`
-          : `<span class="badge">${info.code || '?'}</span>`;
-
-        // Fraîcheur de la donnée
-        const isRealtime = sdt.data_freshness === 'realtime';
-        const freshBadge = `<span class="freshness-badge ${isRealtime ? 'freshness-realtime' : 'freshness-theorique'}">${isRealtime ? '⚡ Temps réel' : '📅 Théorique'}</span>`;
+        const lineFg    = lineColor ? textColor(lineColor) : '#ffffff';
+        const bgStyle   = lineColor ? `background:#${lineColor};color:${lineFg};` : 'background:var(--bg);color:var(--muted);';
+        const direction = info.direction || info.headsign || '?';
+        const nextStr   = next ? formatTime(next) : '—';
+        const waitMin   = next ? Math.round((next - Date.now()) / 60000) : null;
+        const waitStr   = waitMin === null ? '' : waitMin <= 0 ? ' · À quai' : ` · dans ${waitMin} min`;
 
         const item = document.createElement('div');
-        item.className = 'departure-item';
+        item.className = 'direction-item';
         item.innerHTML = `
-          <div class="departure-left">
-            ${lineBadge}
-            <div style="min-width:0;">
-              <div class="departure-dest">${info.direction || info.headsign || '?'}</div>
-              <div class="departure-mode">${info.commercial_mode || ''}</div>
-            </div>
+          <div class="direction-icon" style="${bgStyle}">${info.code || '?'}</div>
+          <div class="direction-info">
+            <div class="direction-terminus">${direction}</div>
+            <div class="direction-sub">Prochain : ${nextStr}${waitStr}</div>
           </div>
-          <div class="departure-right">
-            <div class="departure-time">${timeStr}${freshBadge}</div>
-            <div class="departure-wait ${waitClass}">${waitLabel}</div>
-          </div>
+          <span class="direction-count">${count}</span>
         `;
+        item.onclick = () => showDepartures(key, stopAreaId, stopAreaName);
         card.appendChild(item);
       });
 
@@ -429,6 +487,98 @@
     } catch (e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
+  }
+
+  // ─── Vue 3 : passages filtrés ────────────────────────────────────────────────
+  function showDepartures(directionKey, stopAreaId, stopAreaName) {
+    showView('departures');
+
+    const filtered = directionKey
+      ? allDepartures.filter(dep => {
+          const info = dep.display_informations || {};
+          const key  = (info.code || '?') + '||' + (info.direction || info.headsign || '?');
+          return key === directionKey;
+        })
+      : allDepartures;
+
+    const dirLabel = directionKey ? directionKey.split('||')[1] : 'Toutes les directions';
+
+    updateBreadcrumb([
+      { label: document.getElementById('search-input').value, action: 'backToSearch()' },
+      { label: stopAreaName, action: `loadStopPoints('${stopAreaId}', '${stopAreaName.replace(/'/g,"\\'")}')` },
+      { label: currentStopPointName, action: `loadDirections('${currentStopPointId}', '${currentStopPointName.replace(/'/g,"\\'")}', '${stopAreaId}', '${stopAreaName.replace(/'/g,"\\'")}')` },
+      { label: dirLabel }
+    ]);
+
+    const el = document.getElementById('departures-content');
+    el.innerHTML = '';
+
+    // Bandeau de filtre actif
+    if (directionKey) {
+      const info = allDepartures.find(d => {
+        const i = d.display_informations || {};
+        return ((i.code || '?') + '||' + (i.direction || i.headsign || '?')) === directionKey;
+      })?.display_informations || {};
+
+      const filterBar = document.createElement('div');
+      filterBar.className = 'card';
+      filterBar.style.marginBottom = '8px';
+      filterBar.innerHTML = `
+        <div class="filter-bar">
+          <span class="filter-bar-label">🎯 ${makeBadge(info)} &nbsp;Direction : <strong>${dirLabel}</strong></span>
+          <button class="filter-bar-clear" onclick="showDepartures(null, '${stopAreaId}', '${stopAreaName.replace(/'/g,"\\'")}')">Voir tout</button>
+        </div>
+      `;
+      el.appendChild(filterBar);
+    }
+
+    el.innerHTML += `<div class="section-label">📍 ${currentStopPointName}</div>`;
+
+    if (!filtered.length) {
+      el.innerHTML += '<div class="empty"><div class="icon">🕐</div>Aucun passage trouvé.</div>';
+      return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    filtered.forEach(dep => {
+      const info = dep.display_informations || {};
+      const sdt  = dep.stop_date_time || {};
+      const dateStr = sdt.departure_date_time || sdt.arrival_date_time;
+      const date    = parseNavitiaDate(dateStr);
+      const timeStr = formatTime(date);
+
+      const waitMin = date ? Math.round((date - Date.now()) / 60000) : null;
+      let waitLabel = '', waitClass = '';
+      if (waitMin !== null) {
+        if (waitMin <= 0)      { waitLabel = 'À quai';          waitClass = 'quai'; }
+        else if (waitMin <= 1) { waitLabel = '1 min';           waitClass = 'soon'; }
+        else                   { waitLabel = waitMin + ' min';  waitClass = waitMin <= 4 ? 'soon' : ''; }
+      }
+
+      const isRealtime = sdt.data_freshness === 'realtime';
+      const freshBadge = `<span class="freshness-badge ${isRealtime ? 'freshness-realtime' : 'freshness-theorique'}">${isRealtime ? '⚡ Temps réel' : '📅 Théorique'}</span>`;
+
+      const item = document.createElement('div');
+      item.className = 'departure-item';
+      item.innerHTML = `
+        <div class="departure-left">
+          ${makeBadge(info)}
+          <div style="min-width:0;">
+            <div class="departure-dest">${info.direction || info.headsign || '?'}</div>
+            <div class="departure-mode">${info.commercial_mode || ''}</div>
+          </div>
+        </div>
+        <div class="departure-right">
+          <div class="departure-time">${timeStr}${freshBadge}</div>
+          <div class="departure-wait ${waitClass}">${waitLabel}</div>
+        </div>
+      `;
+      card.appendChild(item);
+    });
+
+    el.appendChild(card);
   }
 
   function backToSearch() {
