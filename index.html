@@ -263,13 +263,41 @@
     return (r*299 + g*587 + b*114) / 1000 > 128 ? '#000000' : '#ffffff';
   }
 
-  function makeBadge(info) {
-    const lineColor = info.color ? info.color.replace('#','') : null;
-    if (lineColor) {
-      const fg = textColor(lineColor);
-      return `<span class="badge-line" style="background:#${lineColor};color:${fg};">${info.code || '?'}</span>`;
+  // Génère une icône SVG fidèle aux pictogrammes officiels IDFM
+  // Métro → cercle | RER/Transilien → carré arrondi | Tram → losange | Bus/autre → rectangle arrondi
+  function makeLineIcon(info, size = 28) {
+    const code  = info.code || info.label || '?';
+    const mode  = (info.commercial_mode || '').toLowerCase();
+    const bg    = info.color ? '#' + info.color.replace('#','') : '#888888';
+    const fg    = textColor(info.color ? info.color.replace('#','') : '888888');
+    const fs    = code.length <= 2 ? Math.round(size * 0.46) : code.length === 3 ? Math.round(size * 0.36) : Math.round(size * 0.28);
+    const cx    = size / 2, cy = size / 2, r = size / 2 - 0.5;
+
+    let shape;
+    if (mode.includes('métro') || mode.includes('metro')) {
+      // Cercle plein
+      shape = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}"/>`;
+    } else if (mode.includes('rer') || mode.includes('transilien') || mode.includes('train')) {
+      // Carré très arrondi (rx = 6/28 * size)
+      const rx = Math.round(size * 0.22);
+      shape = `<rect x="0.5" y="0.5" width="${size-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
+    } else if (mode.includes('tram')) {
+      // Losange
+      const h = size / 2;
+      shape = `<polygon points="${cx},0.5 ${size-0.5},${cy} ${cx},${size-0.5} 0.5,${cy}" fill="${bg}"/>`;
+    } else {
+      // Rectangle arrondi (bus, noctilien, navette…)
+      const rx = Math.round(size * 0.18);
+      const w  = code.length <= 2 ? size : size + Math.round((code.length - 2) * fs * 0.62);
+      shape = `<rect x="0.5" y="0.5" width="${w-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
+      return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;">${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
     }
-    return `<span class="badge">${info.code || '?'}</span>`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;">${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
+  }
+
+  // Badge simple (inline dans du texte, taille réduite)
+  function makeBadge(info, size = 26) {
+    return makeLineIcon(info, size);
   }
 
   // ─── Vue 1 : recherche ───────────────────────────────────────────────────────
@@ -395,14 +423,11 @@
 
         const modeIcon = getModeIcon(lines[0]?.commercial_modes?.[0]?.name || sp.commercial_modes?.[0]?.name || '');
 
-        const lineBadges = lines.slice(0, 6).map(l => {
-          if (l.color) {
-            const bg = l.color.replace('#','');
-            const fg = textColor(bg);
-            return `<span class="badge-line" style="background:#${bg};color:${fg};">${l.code || l.name || '?'}</span>`;
-          }
-          return `<span class="badge">${l.code || l.name || '?'}</span>`;
-        }).join('');
+        const lineBadges = lines.slice(0, 6).map(l => makeLineIcon({
+          code: l.code || l.name || '?',
+          color: l.color,
+          commercial_mode: l.commercial_modes?.[0]?.name || l.physical_modes?.[0]?.name || ''
+        }, 26)).join(' ');
 
         const dirText = directions.length
           ? `<div class="item-meta" style="margin-top:4px;">→ ${directions.join(', ')}</div>`
@@ -505,18 +530,16 @@
       // Une ligne par terminus distinct
       dirMap.forEach((entry, key) => {
         const { info, count, next } = entry;
-        const lineColor = info.color ? info.color.replace('#','') : null;
-        const lineFg    = lineColor ? textColor(lineColor) : '#ffffff';
-        const bgStyle   = lineColor ? `background:#${lineColor};color:${lineFg};` : 'background:var(--bg);color:var(--muted);';
         const direction = info.direction || info.headsign || '?';
         const nextStr   = next ? formatTime(next) : '—';
         const waitMin   = next ? Math.round((next - Date.now()) / 60000) : null;
         const waitStr   = waitMin === null ? '' : waitMin <= 0 ? ' · À quai' : ` · dans ${waitMin} min`;
+        const icon      = makeLineIcon(info, 36);
 
         const item = document.createElement('div');
         item.className = 'direction-item';
         item.innerHTML = `
-          <div class="direction-icon" style="${bgStyle}">${info.code || '?'}</div>
+          <div style="flex-shrink:0;">${icon}</div>
           <div class="direction-info">
             <div class="direction-terminus">${direction}</div>
             <div class="direction-sub">Prochain : ${nextStr}${waitStr}</div>
@@ -608,7 +631,7 @@
       item.className = 'departure-item';
       item.innerHTML = `
         <div class="departure-left">
-          ${makeBadge(info)}
+          ${makeLineIcon(info, 32)}
           <div style="min-width:0;">
             <div class="departure-dest">${info.direction || info.headsign || '?'}</div>
             <div class="departure-mode">${info.commercial_mode || ''}</div>
