@@ -566,46 +566,38 @@
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
     try {
-      // estimated_timetable retourne les horaires temps réel sur la ligne entière,
-      // on filtre ensuite sur le stop_point voulu
+      // terminus_schedules sur le stop_point = horaires temps réel par direction
       const data = await callProxy(
-        'v2/navitia/lines/' + state.lineId + '/estimated_timetable',
-        { count: 50, data_freshness: 'realtime' }
+        'v2/navitia/stop_points/' + stopPointId + '/terminus_schedules',
+        { count: 50, data_freshness: 'realtime', duration: 3600 }
       );
-      // Extraire les stop_times qui correspondent à notre stop_point ET notre direction
-      const departures = extractDeparturesFromET(data, stopPointId, terminus);
+      const departures = extractDeparturesFromTS(data, terminus);
       state.allDepartures = departures;
       renderDepartures(departures, terminus, el);
     } catch(e) {
-      // Fallback sur /departures classique si estimated_timetable échoue
-      try {
-        const data2 = await callProxy('v2/navitia/stop_points/' + stopPointId + '/departures',
-          { count: 20, data_freshness: 'realtime' });
-        state.allDepartures = data2.departures || [];
-        renderDepartures(state.allDepartures, terminus, el);
-      } catch(e2) {
-        el.innerHTML = `<div class="error-box">Erreur : ${e2.message}</div>`;
-      }
+      el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
   }
 
-  // Convertit la réponse estimated_timetable en tableau de départs compatibles renderDepartures
-  function extractDeparturesFromET(data, stopPointId, terminus) {
+  // Convertit terminus_schedules en tableau de départs compatibles renderDepartures
+  // Structure : terminus_schedules[].{ stop_point, route, display_informations, date_times[] }
+  // date_times[].{ date_time, base_date_time, data_freshness }
+  function extractDeparturesFromTS(data, terminus) {
     const result = [];
-    const vehicleJourneys = data.vehicle_journeys || data.estimated_timetable?.vehicle_journeys || [];
-    vehicleJourneys.forEach(vj => {
-      const info = vj.display_informations || {};
+    const schedules = data.terminus_schedules || [];
+    schedules.forEach(ts => {
+      const info = ts.display_informations || {};
       const dir  = info.direction || info.headsign || '';
-      // Filtrer sur la direction voulue
-      if (terminus && dir && dir !== terminus) return;
-      (vj.stop_times || []).forEach(st => {
-        if (st.stop_point?.id !== stopPointId) return;
+      // Filtrer sur la direction choisie (comparaison souple)
+      if (terminus && dir && !dir.includes(terminus) && !terminus.includes(dir)) return;
+      (ts.date_times || []).forEach(dt => {
         result.push({
           display_informations: info,
           stop_date_time: {
-            departure_date_time: st.departure_date_time || st.arrival_date_time,
-            arrival_date_time:   st.arrival_date_time || st.departure_date_time,
-            data_freshness:      st.data_freshness || vj.data_freshness || 'base_schedule'
+            departure_date_time: dt.date_time,
+            arrival_date_time:   dt.date_time,
+            base_date_time:      dt.base_date_time,
+            data_freshness:      dt.data_freshness || 'base_schedule'
           }
         });
       });
@@ -658,6 +650,18 @@
       const isRT = sdt.data_freshness === 'realtime';
       const freshBadge = `<span class="fresh ${isRT ? 'fresh-rt' : 'fresh-th'}">${isRT ? '⚡ Temps réel' : '📅 Théorique'}</span>`;
 
+      // Affiche le retard si base_date_time disponible
+      let delayBadge = '';
+      if (isRT && sdt.base_date_time && sdt.departure_date_time) {
+        const rtDate  = parseNavitiaDate(sdt.departure_date_time);
+        const thDate  = parseNavitiaDate(sdt.base_date_time);
+        if (rtDate && thDate) {
+          const delayMin = Math.round((rtDate - thDate) / 60000);
+          if (delayMin > 0)      delayBadge = `<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:5px;">+${delayMin} min</span>`;
+          else if (delayMin < 0) delayBadge = `<span style="font-size:11px;color:#15803d;font-weight:600;margin-left:5px;">${delayMin} min</span>`;
+        }
+      }
+
       const item = document.createElement('div'); item.className = 'dep-item';
       item.innerHTML = `
         <div class="dep-left">
@@ -668,7 +672,7 @@
           </div>
         </div>
         <div class="dep-right">
-          <div class="dep-time">${timeStr}${freshBadge}</div>
+          <div class="dep-time">${timeStr}${delayBadge}${freshBadge}</div>
           <div class="dep-wait ${waitClass}">${waitLabel}</div>
         </div>`;
       card.appendChild(item);
