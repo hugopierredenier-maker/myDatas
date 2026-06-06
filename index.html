@@ -492,24 +492,62 @@
     await refreshDepartures();
   }
 
+  // Détermine le bon endpoint SIRI selon le mode de transport
+  // Tram/Bus → estimated-timetable (données par ligne)
+  // Métro/RER/Transilien → stop-monitoring (données par arrêt, plus fiable)
+  function getSiriStrategy(lineInfo) {
+    const mode = (lineInfo.commercial_mode || '').toLowerCase();
+    if (mode.includes('métro') || mode.includes('metro') ||
+        mode.includes('rer') || mode.includes('transilien') || mode.includes('train')) {
+      return 'stop-monitoring';
+    }
+    return 'estimated-timetable';
+  }
+
+  // Convertit un stop_point ID Navitia en MonitoringRef SIRI
+  // "stop_point:IDFM:22297" → "STIF:StopPoint:Q:22297:"
+  function toMonitoringRef(spId) {
+    const m = spId.match(/:(\d+)$/);
+    return m ? `STIF:StopPoint:Q:${m[1]}:` : null;
+  }
+
   async function refreshDepartures() {
     const el=document.getElementById('departures-content');
-    el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
+    el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires temps réel…</div>';
     const {currentTerminus:terminus, currentStopPointIds:spIds, lineInfo, lineRef} = state;
 
     try {
-      // ✅ Stratégie : on essaie d'abord estimated-timetable (temps réel SIRI)
-      // Si ça échoue ou retourne vide → fallback sur departures Navitia
       let departures = [];
       let isRealtime = false;
+      const strategy = getSiriStrategy(lineInfo);
 
-      if (lineRef) {
-        try {
-          const siriData = await callProxy('estimated-timetable', {LineRef: lineRef});
-          departures = parseSiri(siriData, spIds, terminus);
-          isRealtime = true;
-        } catch(siriErr) {
-          console.warn('SIRI failed, fallback Navitia', siriErr);
+      if (strategy === 'stop-monitoring') {
+        // ── Métro / RER / Transilien : stop-monitoring par quai ──
+        // On tente chaque stop_point jusqu'à obtenir des résultats
+        for (const spId of spIds) {
+          const monRef = toMonitoringRef(spId);
+          if (!monRef) continue;
+          try {
+            const data = await callProxy('stop-monitoring', {
+              MonitoringRef: monRef,
+              MaximumStopVisits: 20
+            });
+            const parsed = parseStopMonitoring(data, terminus);
+            if (parsed.length) {
+              departures = parsed;
+              isRealtime = true;
+              break;
+            }
+          } catch(e) { console.warn('stop-monitoring failed for', spId, e); }
+        }
+      } else {
+        // ── Tram / Bus : estimated-timetable par ligne ──
+        if (lineRef) {
+          try {
+            const data = await callProxy('estimated-timetable', {LineRef: lineRef});
+            departures = parseSiri(data, spIds, terminus);
+            isRealtime = true;
+          } catch(e) { console.warn('estimated-timetable failed', e); }
         }
       }
 
@@ -572,6 +610,44 @@
           cancelled: call.DepartureStatus==='cancelled' || call.ArrivalStatus==='cancelled',
           realtime: true
         });
+      });
+    });
+
+    result.sort((a,b) => new Date(a.expectedTime) - new Date(b.expectedTime));
+    return result;
+  }
+
+  // Parse stop-monitoring SIRI (métro, RER, Transilien)
+  function parseStopMonitoring(data, terminus) {
+    const visits = data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
+    const now = Date.now();
+    const result = [];
+
+    visits.forEach(v => {
+      const vj   = v.MonitoredVehicleJourney || {};
+      const call = vj.MonitoredCall || {};
+
+      const dest = call.DestinationDisplay?.[0]?.value
+        || vj.DestinationName?.[0]?.value
+        || vj.DirectionName?.[0]?.value || '';
+
+      // Filtre terminus assoupli
+      if (terminus && dest && !loosMatch(terminus, dest)) return;
+
+      const expectedTime = call.ExpectedDepartureTime || call.AimedDepartureTime
+        || call.ExpectedArrivalTime || call.AimedArrivalTime;
+      const aimedTime = call.AimedDepartureTime || call.AimedArrivalTime;
+
+      if (!expectedTime) return;
+      if (new Date(expectedTime).getTime() < now - 60000) return;
+
+      result.push({
+        expectedTime,
+        aimedTime,
+        destination: dest || terminus,
+        vehicleAtStop: call.VehicleAtStop === true,
+        cancelled: call.DepartureStatus === 'cancelled' || call.ArrivalStatus === 'cancelled',
+        realtime: true
       });
     });
 
