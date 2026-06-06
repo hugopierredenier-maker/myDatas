@@ -223,6 +223,9 @@
 
   function parseNavitiaDate(str) {
     if (!str) return null;
+    // Format ISO 8601 (SIRI stop-monitoring) : "2026-06-06T19:43:50.000Z"
+    if (str.includes('-') || str.includes('Z')) return new Date(str);
+    // Format Navitia : "20260606T214000"
     return new Date(`${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}T${str.slice(9,11)}:${str.slice(11,13)}:${str.slice(13,15)}`);
   }
 
@@ -555,6 +558,23 @@
   }
 
   // ─── Vue 4 : Horaires ────────────────────────────────────────────────────────
+
+  // Convertit un ID Navitia/IDFM en MonitoringRef STIF pour stop-monitoring
+  // ex: "stop_area:IDFM:474151" → "STIF:StopArea:SP:474151:"
+  // ex: "stop_point:IDFM:monomodalStopPlace:45102" → "STIF:StopPoint:Q:45102:"
+  function toMonitoringRef(id) {
+    // stop_area
+    let m = id.match(/stop_area:IDFM:(\d+)/);
+    if (m) return `STIF:StopArea:SP:${m[1]}:`;
+    // stop_point monomodal
+    m = id.match(/monomodalStopPlace:(\d+)/);
+    if (m) return `STIF:StopPoint:Q:${m[1]}:`;
+    // stop_point générique IDFM:XXXXXX
+    m = id.match(/stop_point:IDFM:(\d+)/);
+    if (m) return `STIF:StopPoint:Q:${m[1]}:`;
+    return null;
+  }
+
   async function loadDepartures(stopPointId, terminus, stopAreaId, stopAreaName, lineName) {
     showView('departures');
     updateBreadcrumb([
@@ -565,37 +585,109 @@
     ]);
     const el = document.getElementById('departures-content');
     el.innerHTML = '<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
+
+    // On essaie d'abord avec le stop_point, puis le stop_area si ça échoue ou retourne vide
+    const monRefSP = toMonitoringRef(stopPointId);
+    const monRefSA = toMonitoringRef(stopAreaId);
+
     try {
-      // terminus_schedules sur le stop_point = horaires temps réel par direction
-      const data = await callProxy(
-        'v2/navitia/stop_points/' + stopPointId + '/terminus_schedules',
-        { count: 50, data_freshness: 'realtime', duration: 3600 }
-      );
-      const departures = extractDeparturesFromTS(data, terminus);
-      state.allDepartures = departures;
-      renderDepartures(departures, terminus, el);
+      let visits = [];
+
+      // Essai 1 : stop_point
+      if (monRefSP) {
+        const data = await callProxy('stop-monitoring', { MonitoringRef: monRefSP });
+        visits = extractVisitsFromSM(data, terminus);
+      }
+
+      // Essai 2 : si vide, tenter avec stop_area
+      if (!visits.length && monRefSA) {
+        const data = await callProxy('stop-monitoring', { MonitoringRef: monRefSA });
+        visits = extractVisitsFromSM(data, terminus);
+      }
+
+      // Fallback Navitia terminus_schedules si stop-monitoring ne donne rien
+      if (!visits.length) {
+        const data = await callProxy(
+          'v2/navitia/stop_points/' + stopPointId + '/terminus_schedules',
+          { count: 20, data_freshness: 'realtime', duration: 7200 }
+        );
+        visits = extractDeparturesFromTS(data, terminus);
+      }
+
+      state.allDepartures = visits;
+      renderDepartures(visits, terminus, el);
     } catch(e) {
       el.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
     }
   }
 
-  // Convertit terminus_schedules en tableau de départs compatibles renderDepartures
-  // Structure : terminus_schedules[].{ stop_point, route, display_informations, date_times[] }
-  // date_times[].{ date_time, base_date_time, data_freshness }
+  // Parse la réponse SIRI stop-monitoring
+  // Structure : Siri.ServiceDelivery.StopMonitoringDelivery[0].MonitoredStopVisit[]
+  function extractVisitsFromSM(data, terminus) {
+    const delivery = data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0];
+    const visits = delivery?.MonitoredStopVisit || [];
+    const now = Date.now();
+    const result = [];
+
+    visits.forEach(v => {
+      const journey = v.MonitoredVehicleJourney || {};
+      const call    = journey.MonitoredCall || {};
+
+      // Direction : DestinationName ou JourneyNote
+      const destName = journey.DestinationName?.[0]?.value
+        || journey.JourneyNote?.[0]?.value
+        || call.DestinationDisplay?.[0]?.value
+        || '';
+
+      // Filtrer sur la direction choisie (comparaison souple)
+      if (terminus && destName && !destName.includes(terminus) && !terminus.includes(destName)) return;
+
+      const expectedDep = call.ExpectedDepartureTime || call.ExpectedArrivalTime
+        || call.AimedDepartureTime || call.AimedArrivalTime;
+      const aimedDep    = call.AimedDepartureTime || call.AimedArrivalTime;
+
+      if (!expectedDep) return;
+      const depDate = new Date(expectedDep);
+      if (depDate.getTime() < now - 60000) return; // déjà passé
+
+      // Reconstruire un objet compatible renderDepartures
+      const lineRef  = journey.LineRef?.value || '';
+      const lineCode = lineRef.split('::')[1]?.replace(':', '') || state.lineInfo?.code || '';
+      result.push({
+        display_informations: {
+          ...state.lineInfo,
+          direction: destName,
+          commercial_mode: state.lineInfo?.commercial_mode || '',
+        },
+        stop_date_time: {
+          departure_date_time: expectedDep,  // ISO 8601 — on adapte parseNavitiaDate
+          base_date_time:      aimedDep,
+          data_freshness:      'realtime',
+          vehicle_at_stop:     call.VehicleAtStop || false,
+        },
+        _isISO: true  // flag pour savoir qu'on est en ISO et non format navitia
+      });
+    });
+
+    result.sort((a, b) =>
+      new Date(a.stop_date_time.departure_date_time) - new Date(b.stop_date_time.departure_date_time)
+    );
+    return result;
+  }
+
+  // Convertit terminus_schedules Navitia en tableau compatible renderDepartures (fallback)
   function extractDeparturesFromTS(data, terminus) {
     const result = [];
     const schedules = data.terminus_schedules || [];
     schedules.forEach(ts => {
       const info = ts.display_informations || {};
       const dir  = info.direction || info.headsign || '';
-      // Filtrer sur la direction choisie (comparaison souple)
       if (terminus && dir && !dir.includes(terminus) && !terminus.includes(dir)) return;
       (ts.date_times || []).forEach(dt => {
         result.push({
           display_informations: info,
           stop_date_time: {
             departure_date_time: dt.date_time,
-            arrival_date_time:   dt.date_time,
             base_date_time:      dt.base_date_time,
             data_freshness:      dt.data_freshness || 'base_schedule'
           }
@@ -603,7 +695,6 @@
       });
     });
     const now = Date.now();
-    // Trier par heure de départ et ne garder que les passages à venir (ou à quai)
     return result
       .sort((a, b) => {
         const da = parseNavitiaDate(a.stop_date_time.departure_date_time);
@@ -612,7 +703,7 @@
       })
       .filter(dep => {
         const d = parseNavitiaDate(dep.stop_date_time.departure_date_time);
-        return d && d.getTime() >= now - 60000; // tolérance 1 min pour "à quai"
+        return d && d.getTime() >= Date.now() - 60000;
       });
   }
 
@@ -647,7 +738,9 @@
       const timeStr = formatTime(date);
       const waitMin = date ? Math.round((date - Date.now()) / 60000) : null;
       let waitLabel = '', waitClass = '';
-      if (waitMin !== null) {
+      if (sdt.vehicle_at_stop) {
+        waitLabel = 'À quai'; waitClass = 'quai';
+      } else if (waitMin !== null) {
         if (waitMin <= 0)      { waitLabel = 'À quai';         waitClass = 'quai'; }
         else if (waitMin <= 1) { waitLabel = '1 min';          waitClass = 'soon'; }
         else                   { waitLabel = waitMin + ' min'; waitClass = waitMin <= 4 ? 'soon' : ''; }
