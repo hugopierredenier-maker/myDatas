@@ -356,6 +356,12 @@ body {
     }
     .refresh-btn:active { opacity: .7; }
 
+    #refresh-info{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
     /* ── Empty / error ── */
     .empty { text-align: center; padding: 3.5rem 2rem; }
     .empty i { font-size: 44px; color: var(--muted); display: block; margin-bottom: 14px; }
@@ -394,7 +400,9 @@ body {
     <span class="chip" onclick="fillAndSearch('La Défense')">La Défense</span>
     <span class="chip" onclick="fillAndSearch('Montparnasse')">Montparnasse</span>
   </div>
-
+<div id="refresh-info">
+Actualisation automatique toutes les 20 s
+</div>
   <div id="favorites-section"></div>
 
   <div class="breadcrumb" id="breadcrumb"></div>
@@ -805,6 +813,7 @@ function toggleFavorite(id, name) {
 
   /* ── Vue 4 : Horaires ──────────────────────────────────────────────────── */
   async function loadDepartures(terminus,spIds,stopAreaId,stopAreaName,lineName) {
+    await refreshDepartures();
     showView('departures');
     updateBreadcrumb([
       {label:inp.value,fn:'backToSearch()'},
@@ -820,8 +829,31 @@ function toggleFavorite(id, name) {
     const m=(li.commercial_mode||'').toLowerCase();
     return (m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'stop-monitoring':'estimated-timetable';
   }
+function startAutoRefresh() {
 
+  stopAutoRefresh();
+
+  autoRefresh = setInterval(() => {
+
+    if (
+      document.getElementById("view-departures").style.display === "block"
+    ) {
+      refreshDepartures();
+    }
+
+  }, 20000); // 20 secondes
+}
+
+function stopAutoRefresh() {
+
+  if (autoRefresh) {
+    clearInterval(autoRefresh);
+    autoRefresh = null;
+  }
+
+}
   async function refreshDepartures() {
+    let autoRefresh = null;
     const el=document.getElementById('departures-content'); el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
     const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef}=state;
     try {
@@ -963,7 +995,25 @@ if (!deps.length){
     btn.onclick=refreshDepartures; el.appendChild(btn);
   }
 
-  function backToSearch(){showView('search');updateBreadcrumb([]);}
+  function showView(name) {
+
+  if (name !== "departures") {
+    stopAutoRefresh();
+  }
+
+  ['search','lines','directions','departures'].forEach(v =>
+    document.getElementById('view-'+v).style.display =
+      v===name ? 'block' : 'none'
+  );
+}
+
+function backToSearch(){
+
+  stopAutoRefresh();
+
+  showView('search');
+  updateBreadcrumb([]);
+}
 
   function updateClock() {
   const el = document.getElementById("live-clock");
