@@ -93,6 +93,8 @@
     .dep-wait  { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 400; }
     .dep-wait.soon { color: var(--success); font-weight: 600; }
     .dep-wait.quai { color: var(--accent); font-weight: 600; }
+    .dep-time.soon { color: var(--success); }
+    .dep-time.quai { color: var(--accent); }
     .section-label {
       font-size: 12px; font-weight: 600; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 10px;
@@ -852,7 +854,7 @@ lines.forEach(l => {
           </div>
         </div>
         <div class="dep-right">
-          <div class="dep-time">${waitLabel}${delayBadge}${cancelBadge}</div>
+          <div class="dep-time ${waitClass}">${waitLabel}${delayBadge}${cancelBadge}</div>
           <div class="dep-wait ${waitClass}">${timeStr}</div>
         </div>`;
       card.appendChild(item);
