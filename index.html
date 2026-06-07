@@ -395,6 +395,8 @@ body {
     <span class="chip" onclick="fillAndSearch('Montparnasse')">Montparnasse</span>
   </div>
 
+  <div id="favorites-section"></div>
+
   <div class="breadcrumb" id="breadcrumb"></div>
 
   <div id="view-search">
@@ -414,6 +416,39 @@ body {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
 <script>
+// ===== FAVORIS =====
+
+function getFavorites() {
+  return JSON.parse(localStorage.getItem("favorites") || "[]");
+}
+
+function saveFavorites(favorites) {
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+}
+
+function isFavorite(id) {
+  return getFavorites().some(f => f.id === id);
+}
+
+function toggleFavorite(id, name) {
+  let favorites = getFavorites();
+
+  const exists = favorites.find(f => f.id === id);
+
+  if (exists) {
+    favorites = favorites.filter(f => f.id !== id);
+  } else {
+    favorites.push({
+      id,
+      name
+    });
+  }
+
+  saveFavorites(favorites);
+
+  renderFavorites();
+}
+  
   let state = {
     stopAreaId:'', stopAreaName:'',
     lineId:'', lineInfo:null, lineRef:'',
@@ -452,6 +487,43 @@ body {
     const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
     return (r*299+g*587+b*114)/1000>128?'#000':'#fff';
   }
+  function renderFavorites() {
+
+  const container =
+    document.getElementById("favorites-section");
+
+  const favorites = getFavorites();
+
+  if (!favorites.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="sec-title">
+      ⭐ Favoris
+    </div>
+
+    <div class="group">
+      ${favorites.map(f => `
+        <div class="row"
+             onclick="loadLines('${f.id}','${f.name}')">
+
+          <div class="row-icon">
+            <i class="ti ti-star-filled"></i>
+          </div>
+
+          <div class="row-body">
+            <div class="row-title">
+              ${f.name}
+            </div>
+          </div>
+
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
 
   function lineIcon(info, size=32) {
     const code=String(info.code||info.label||'?');
@@ -616,7 +688,7 @@ body {
         const s=p.stop_area||p.stop_point; if(!s)return;
         const modes=(s.physical_modes||[]).map(m=>m.name).join(' · ');
         const row=document.createElement('div'); row.className='row';
-        row.innerHTML=`<div class="row-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div><div class="row-body"><div class="row-title">${s.name}</div>${modes?`<div class="row-sub">${modes}</div>`:''}</div><i class="ti ti-chevron-right row-chev" aria-hidden="true"></i>`;
+        row.innerHTML=`<div class="row-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div><div class="row-body"><div style=" display:flex; justify-content:space-between; align-items:center; width:100%; ">  <div class="row-title">   ${s.name} </div>  <button   onclick="     event.stopPropagation();     toggleFavorite(       '${s.id}',       '${s.name.replace(/'/g,"\'")}'     );   "   style="     border:none;     background:none;     cursor:pointer;     font-size:20px;   " >   ${isFavorite(s.id) ? '⭐' : '☆'} </button>  </div>${modes?`<div class="row-sub">${modes}</div>`:''}</div><i class="ti ti-chevron-right row-chev" aria-hidden="true"></i>`;
         row.onclick=()=>loadLines(s.id,s.name); g.appendChild(row);
       });
       results.appendChild(g);
@@ -762,6 +834,44 @@ body {
       if (!deps.length&&spIds.length){try{const d=await callProxy('v2/navitia/stop_points/'+spIds[0]+'/departures',{count:20});deps=parseNAV(d.departures||[],terminus);}catch{}}
       renderDeps(el,deps,terminus,isRT,_dc?.disruptions||[]);
     } catch(e){el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;renderRefreshBtn(el);}
+    el.appendChild(header);
+
+// ===== BOUTON FAVORI =====
+
+const favBtn = document.createElement("button");
+
+favBtn.className = "refresh-btn";
+
+favBtn.innerHTML =
+  isFavorite(state.currentStopAreaId)
+    ? "⭐ Retirer des favoris"
+    : "☆ Ajouter aux favoris";
+
+favBtn.onclick = () => {
+
+  toggleFavorite(
+    state.currentStopAreaId,
+    state.currentStopAreaName
+  );
+
+  favBtn.innerHTML =
+    isFavorite(state.currentStopAreaId)
+      ? "⭐ Retirer des favoris"
+      : "☆ Ajouter aux favoris";
+};
+
+el.appendChild(favBtn);
+
+// =========================
+
+if (!deps.length){
+    el.innerHTML += `
+    <div class="empty">
+      ...
+    </div>`;
+    renderRefreshBtn(el);
+    return;
+}
   }
 
   function parseET(data,spIds,terminus) {
@@ -870,6 +980,8 @@ body {
 
 updateClock();
 setInterval(updateClock, 1000);
+
+  renderFavorites();
 </script>
 </body>
 </html>
