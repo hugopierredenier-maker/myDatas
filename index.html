@@ -570,32 +570,51 @@ this._spCache = sp;
       const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune direction';body.appendChild(e);return;
     }
     const list = document.createElement('div'); list.className = 'item-list';
-    this._routes.forEach(route => {
-const terminus = route.direction?.stop_area?.name || route.name || '?';
+this._routes.forEach(route => {
 
-const isInbound =
-  route.direction_type === 'inbound';
+  const terminus =
+    route.direction?.stop_area?.name ||
+    route.name ||
+    '?';
 
-const arrow = isInbound ? '⬅' : '➡';
+  const spIds = (this._spCache || [])
+    .filter(sp =>
+      (sp.routes || []).some(r => r.id === route.id)
+    )
+    .map(sp => sp.id);
 
-const label = isInbound
-  ? `Retour vers ${terminus}`
-  : `Aller vers ${terminus}`;
-btn.innerHTML = `
-  <span style="font-size:16px">${arrow}</span>
-  <span>${label}</span>
-  <i class="ti ti-chevron-right item-btn-arrow"></i>
-`;
-      btn.onclick = () => {
-        this.terminus = terminus;
-        this.spIds    = spIds;
-        this.step     = 'departures';
-        this.render();
-        this.refresh();
-        this.startTimer();
-      };
-      list.appendChild(btn);
-    });
+  const isInbound =
+    route.direction_type === 'inbound';
+
+  const arrow = isInbound ? '⬅' : '➡';
+
+  const label = isInbound
+    ? `Retour`
+    : `Aller`;
+
+  const btn = document.createElement('button');
+  btn.className = 'item-btn';
+
+  btn.innerHTML = `
+    <span style="font-size:16px">${arrow}</span>
+    <span>${label}</span>
+    <span class="item-btn-sub">${terminus}</span>
+    <i class="ti ti-chevron-right item-btn-arrow"></i>
+  `;
+
+  btn.onclick = () => {
+    this.terminus = terminus;
+    this.spIds = spIds;
+    this.step = 'departures';
+    this.render();
+    this.refresh();
+    this.startTimer();
+  };
+
+  list.appendChild(btn);
+});
+    const routes = rd.routes || [];
+    console.log(routes);
     body.appendChild(list);
   }
 
