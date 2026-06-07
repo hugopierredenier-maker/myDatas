@@ -127,13 +127,30 @@
       .fresh-rt { background: #14532d; color: #86efac; }
       .fresh-th { background: #422006; color: #fde68a; }
     }
-    .refresh-btn {
-      width: 100%; height: 38px; border-radius: var(--radius-sm);
-      font-family: inherit; font-size: 13px; font-weight: 500;
-      cursor: pointer; border: 1px solid var(--border);
-      background: var(--surface); color: var(--muted); margin-top: 8px;
+
+    /* ── Auto-refresh bar ── */
+    .refresh-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      margin-top: 10px; gap: 12px;
     }
-    .refresh-btn:hover { background: var(--bg); }
+    .refresh-bar-left { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .refresh-countdown { font-weight: 600; color: var(--text); min-width: 20px; text-align: right; }
+    .refresh-progress {
+      flex: 1; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden;
+    }
+    .refresh-progress-bar {
+      height: 100%; background: var(--accent); border-radius: 99px;
+      transition: width 1s linear;
+    }
+    .refresh-now-btn {
+      font-family: inherit; font-size: 12px; font-weight: 500;
+      padding: 5px 10px; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+      white-space: nowrap;
+    }
+    .refresh-now-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── Perturbations ── */
     .disruption {
@@ -163,8 +180,6 @@
     .disruption-badge.blocking { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
     .disruption-badge.warning  { background: var(--warn-bg);   color: var(--warn-text);   border: 1px solid var(--warn-border);   }
     .disruption-badge.info     { background: var(--info-bg);   color: var(--info-text);   border: 1px solid var(--info-border);   }
-
-    /* Collapsible disruptions */
     .disruptions-toggle {
       width: 100%; display: flex; align-items: center; justify-content: space-between;
       padding: 10px 14px; background: none; border: none; cursor: pointer;
@@ -215,6 +230,7 @@
 </div>
 
 <script>
+  // ── State ────────────────────────────────────────────────────────────────────
   let state = {
     stopAreaId:'', stopAreaName:'',
     lineId:'', lineInfo:null, lineRef:'',
@@ -222,6 +238,64 @@
     currentStopAreaId:'', currentStopAreaName:'', currentLineName:''
   };
 
+  // ── Auto-refresh ─────────────────────────────────────────────────────────────
+  const REFRESH_INTERVAL = 30; // secondes
+  let autoRefreshTimer  = null;
+  let countdownTimer    = null;
+  let countdownSeconds  = REFRESH_INTERVAL;
+
+  function startAutoRefresh() {
+    stopAutoRefresh();
+    countdownSeconds = REFRESH_INTERVAL;
+    updateCountdownUI();
+    // Décompte chaque seconde
+    countdownTimer = setInterval(() => {
+      countdownSeconds--;
+      updateCountdownUI();
+      if (countdownSeconds <= 0) {
+        countdownSeconds = REFRESH_INTERVAL;
+        refreshDepartures();
+      }
+    }, 1000);
+  }
+
+  function stopAutoRefresh() {
+    clearInterval(autoRefreshTimer);
+    clearInterval(countdownTimer);
+    autoRefreshTimer = null;
+    countdownTimer   = null;
+  }
+
+  function updateCountdownUI() {
+    const el = document.getElementById('refresh-countdown');
+    const bar = document.getElementById('refresh-progress-bar');
+    if (el) el.textContent = countdownSeconds + 's';
+    if (bar) bar.style.width = (countdownSeconds / REFRESH_INTERVAL * 100) + '%';
+  }
+
+  function renderRefreshBar(container) {
+    const bar = document.createElement('div');
+    bar.className = 'refresh-bar';
+    bar.innerHTML = `
+      <div class="refresh-bar-left">
+        <span>Actualisation dans</span>
+        <span class="refresh-countdown" id="refresh-countdown">${countdownSeconds}s</span>
+      </div>
+      <div class="refresh-progress">
+        <div class="refresh-progress-bar" id="refresh-progress-bar" style="width:${countdownSeconds/REFRESH_INTERVAL*100}%"></div>
+      </div>
+      <button class="refresh-now-btn" onclick="manualRefresh()">↻ Maintenant</button>
+    `;
+    container.appendChild(bar);
+  }
+
+  async function manualRefresh() {
+    countdownSeconds = REFRESH_INTERVAL;
+    updateCountdownUI();
+    await refreshDepartures();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
   async function callProxy(endpoint, params={}) {
     const qs = new URLSearchParams({ endpoint, ...params }).toString();
     const r = await fetch('/api/prim?' + qs);
@@ -233,6 +307,8 @@
     ['search','lines','directions','departures'].forEach(v =>
       document.getElementById('view-'+v).style.display = v===name ? 'block' : 'none'
     );
+    // Arrête l'auto-refresh si on quitte la vue horaires
+    if (name !== 'departures') stopAutoRefresh();
   }
 
   function updateBreadcrumb(items) {
@@ -328,20 +404,18 @@
     closeAC(); searchStops();
   }
 
-  // ── Perturbations ────────────────────────────────────────────────────────────
+  // ── Perturbations ─────────────────────────────────────────────────────────────
   function disruptionLevel(cause, effect) {
     const c=(cause||'').toLowerCase(), e=(effect||'').toLowerCase();
     if (e.includes('no_service')||e.includes('significant')||c.includes('accident')||c.includes('travaux')) return 'blocking';
     if (e.includes('reduced')||e.includes('detour')||c.includes('perturbation')||c.includes('incident')) return 'warning';
     return 'info';
   }
-
   function disruptionIcon(level) {
     if (level==='blocking') return '🚫';
     if (level==='warning')  return '⚠️';
     return 'ℹ️';
   }
-
   function formatPeriod(periods) {
     if (!periods||!periods.length) return '';
     const p = periods[0];
@@ -351,16 +425,12 @@
     if (from) return `Depuis le ${from}`;
     return '';
   }
-
   async function fetchDisruptions(lineId) {
     try {
       const data = await callProxy('v2/navitia/lines/'+lineId+'/disruptions', {count:20});
       return data.disruptions || [];
-    } catch(e) {
-      return [];
-    }
+    } catch(e) { return []; }
   }
-
   function renderDisruptionBadge(disruptions) {
     if (!disruptions.length) return '';
     const blocking = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='blocking').length;
@@ -371,31 +441,22 @@
     if (info)     return `<span class="disruption-badge info">ℹ️ ${info} info${info>1?'s':''}</span>`;
     return '';
   }
-
   function renderDisruptionsBlock(disruptions, container) {
     if (!disruptions.length) return;
-
     const blocking = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='blocking').length;
     const warning  = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='warning').length;
     const count = disruptions.length;
     const topLevel = blocking ? 'blocking' : warning ? 'warning' : 'info';
     const icons = blocking ? '🚫' : warning ? '⚠️' : 'ℹ️';
     const label = `${icons} ${count} message${count>1?'s':(topLevel==='blocking'?' de perturbation':topLevel==='warning'?" d'avertissement":"d'information")}`;
-
     const wrapper = document.createElement('div');
     wrapper.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px;';
-
     const toggle = document.createElement('button');
     toggle.className='disruptions-toggle';
     toggle.innerHTML=`<span>${label}</span><span class="arrow">▼</span>`;
-    toggle.onclick=()=>{
-      toggle.classList.toggle('open');
-      body.classList.toggle('open');
-    };
-
     const body = document.createElement('div');
     body.className='disruptions-body';
-
+    toggle.onclick=()=>{ toggle.classList.toggle('open'); body.classList.toggle('open'); };
     disruptions.forEach(d => {
       const level = disruptionLevel(d.cause, d.disruption_effect||d.effect);
       const icon  = disruptionIcon(level);
@@ -403,26 +464,17 @@
       const msgs  = (d.messages||[]).map(m=>m.text).filter(Boolean);
       const msg   = msgs.join(' ') || d.title || d.header || '';
       const period= formatPeriod(d.application_periods||d.periods);
-
       const div = document.createElement('div');
       div.className='disruption '+level;
-      div.innerHTML=`
-        <div class="disruption-header">
-          <span class="disruption-icon">${icon}</span>
-          <span class="disruption-cause">${cause}</span>
-        </div>
-        ${msg ? `<div class="disruption-msg">${msg}</div>` : ''}
-        ${period ? `<div class="disruption-period">🕐 ${period}</div>` : ''}
-      `;
+      div.innerHTML=`<div class="disruption-header"><span class="disruption-icon">${icon}</span><span class="disruption-cause">${cause}</span></div>${msg?`<div class="disruption-msg">${msg}</div>`:''}${period?`<div class="disruption-period">🕐 ${period}</div>`:''}`;
       body.appendChild(div);
     });
-
     wrapper.appendChild(toggle);
     wrapper.appendChild(body);
     container.appendChild(wrapper);
   }
 
-  // ── Autocomplete ────────────────────────────────────────────────────────────
+  // ── Autocomplete ──────────────────────────────────────────────────────────────
   let acTimer=null, acIndex=-1, acResults=[];
   const inputEl = document.getElementById('search-input');
   const acList  = document.getElementById('ac-list');
@@ -476,7 +528,7 @@
   }
   function closeAC() { acList.innerHTML=''; acIndex=-1; acResults=[]; }
 
-  // ── Vue 1 : Recherche ───────────────────────────────────────────────────────
+  // ── Vue 1 : Recherche ─────────────────────────────────────────────────────────
   async function searchStops() {
     const q=document.getElementById('search-input').value.trim(); if (!q) return;
     const btn=document.getElementById('search-btn');
@@ -504,7 +556,7 @@
     btn.disabled=false; btn.textContent='Rechercher';
   }
 
-  // ── Vue 2 : Lignes + perturbations ─────────────────────────────────────────
+  // ── Vue 2 : Lignes ────────────────────────────────────────────────────────────
   async function loadLines(stopAreaId, stopAreaName) {
     state.stopAreaId=stopAreaId; state.stopAreaName=stopAreaName;
     showView('lines');
@@ -515,55 +567,33 @@
     const el=document.getElementById('lines-content');
     el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des lignes…</div>';
     try {
-      // Charge les lignes ET les perturbations de l'arrêt en parallèle
       const [linesData, disruptionsData] = await Promise.all([
         callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines', {count:40}),
         callProxy('v2/navitia/stop_areas/'+stopAreaId+'/disruptions', {count:30}).catch(()=>({disruptions:[]}))
       ]);
       const lines = linesData.lines || [];
       const allDisruptions = disruptionsData.disruptions || [];
-
-      // Indexe les perturbations par ligne
       const disruptionsByLine = {};
       allDisruptions.forEach(d => {
         (d.impacted_objects||[]).forEach(obj => {
           const lid = obj.pt_object?.line?.id || obj.id;
-          if (lid) {
-            if (!disruptionsByLine[lid]) disruptionsByLine[lid]=[];
-            disruptionsByLine[lid].push(d);
-          }
+          if (lid) { if (!disruptionsByLine[lid]) disruptionsByLine[lid]=[]; disruptionsByLine[lid].push(d); }
         });
       });
-
       el.innerHTML='';
       if (!lines.length) { el.innerHTML='<div class="empty"><div class="icon">😕</div>Aucune ligne trouvée.</div>'; return; }
-
       const label=document.createElement('div'); label.className='section-label';
       label.textContent='Lignes disponibles — '+stopAreaName;
       el.appendChild(label);
-
-const modeOrder = { 'rer':0, 'transilien':0, 'train':0, 'métro':1, 'metro':1, 'tramway':2, 'tram':2, 'bus':3, 'noctilien':3 };
-
-function getModeRank(l) {
-  const mode = (l.commercial_modes?.[0]?.name || l.physical_modes?.[0]?.name || 'Autre').toLowerCase();
-  const rank = Object.entries(modeOrder).find(([k]) => mode.includes(k));
-  return rank ? rank[1] : 4;
-}
-
-// Trie les lignes par mode puis par code
-lines.sort((a, b) => {
-  const ra = getModeRank(a), rb = getModeRank(b);
-  if (ra !== rb) return ra - rb;
-  return (a.code||'').localeCompare(b.code||'', undefined, { numeric: true });
-});
-
-const byMode = new Map();
-lines.forEach(l => {
-  const mode = l.commercial_modes?.[0]?.name || l.physical_modes?.[0]?.name || 'Autre';
-  if (!byMode.has(mode)) byMode.set(mode, []);
-  byMode.get(mode).push(l);
-});
-
+      const modeOrder = { 'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3 };
+      function getModeRank(l) {
+        const mode=(l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'Autre').toLowerCase();
+        const rank=Object.entries(modeOrder).find(([k])=>mode.includes(k));
+        return rank?rank[1]:4;
+      }
+      lines.sort((a,b)=>{ const ra=getModeRank(a),rb=getModeRank(b); if(ra!==rb) return ra-rb; return (a.code||'').localeCompare(b.code||'',undefined,{numeric:true}); });
+      const byMode=new Map();
+      lines.forEach(l=>{ const mode=l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'Autre'; if(!byMode.has(mode)) byMode.set(mode,[]); byMode.get(mode).push(l); });
       byMode.forEach((linesInMode,modeName)=>{
         const modeLabel=document.createElement('div');
         modeLabel.style.cssText='font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:12px 16px 4px;';
@@ -571,21 +601,12 @@ lines.forEach(l => {
         el.appendChild(modeLabel);
         const card=document.createElement('div'); card.className='card';
         linesInMode.forEach(l=>{
-          const info={code:l.code||l.name, color:l.color, commercial_mode:l.commercial_modes?.[0]?.name||'', codes:l.codes||[]};
+          const info={code:l.code||l.name,color:l.color,commercial_mode:l.commercial_modes?.[0]?.name||'',codes:l.codes||[]};
           const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,3).join(' · ');
-          const lineDisruptions = disruptionsByLine[l.id] || [];
-          const badge = renderDisruptionBadge(lineDisruptions);
-          const item=document.createElement('div'); item.className='list-item';
-          item.style.flexWrap='wrap';
-          item.innerHTML=`
-            <div style="flex-shrink:0;">${lineIcon(info,34)}</div>
-            <div class="item-info">
-              <div class="item-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-                ${l.name||l.code}${badge}
-              </div>
-              ${termini?`<div class="item-sub">${termini}</div>`:''}
-            </div>
-            <span style="color:var(--muted);font-size:20px;">›</span>`;
+          const lineDisruptions=disruptionsByLine[l.id]||[];
+          const badge=renderDisruptionBadge(lineDisruptions);
+          const item=document.createElement('div'); item.className='list-item'; item.style.flexWrap='wrap';
+          item.innerHTML=`<div style="flex-shrink:0;">${lineIcon(info,34)}</div><div class="item-info"><div class="item-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${l.name||l.code}${badge}</div>${termini?`<div class="item-sub">${termini}</div>`:''}</div><span style="color:var(--muted);font-size:20px;">›</span>`;
           item.onclick=()=>loadDirections(stopAreaId,stopAreaName,l.id,info,l.name||l.code);
           card.appendChild(item);
         });
@@ -594,7 +615,7 @@ lines.forEach(l => {
     } catch(e) { el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; }
   }
 
-  // ── Vue 3 : Directions + perturbations de la ligne ─────────────────────────
+  // ── Vue 3 : Directions ────────────────────────────────────────────────────────
   let _dirCache = null;
 
   async function loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName, activeFilter) {
@@ -607,7 +628,6 @@ lines.forEach(l => {
       {label:lineName}
     ]);
     const el=document.getElementById('directions-content');
-
     const cacheKey=stopAreaId+'|'+lineId;
     if (!_dirCache||_dirCache.key!==cacheKey) {
       el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement…</div>';
@@ -617,7 +637,6 @@ lines.forEach(l => {
           callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]})),
           fetchDisruptions(lineId)
         ]);
-        // Fallback stop_points
         let stopPoints = spData.stop_points||[];
         if (!stopPoints.length) {
           const fb = await callProxy('v2/navitia/stop_areas/'+stopAreaId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));
@@ -626,70 +645,46 @@ lines.forEach(l => {
         _dirCache={key:cacheKey, routes:routesData.routes||[], stopPoints, disruptions};
       } catch(e) { el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; return; }
     }
-
     const {routes, stopPoints, disruptions} = _dirCache;
     const allSpIds = stopPoints.map(sp=>sp.id);
     if (!routes.length) { el.innerHTML='<div class="error-box">Aucune direction trouvée.</div>'; return; }
-
     const outbound=routes.filter(r=>r.direction_type==='outbound');
     const inbound =routes.filter(r=>r.direction_type==='inbound');
     const hasFilter=outbound.length>0&&inbound.length>0;
     const filter=activeFilter||(hasFilter?'outbound':null);
-
     el.innerHTML='';
-
-    // ── Perturbations de la ligne (collapsible) ──
-    if (disruptions.length) {
-      renderDisruptionsBlock(disruptions, el);
-    }
-
+    if (disruptions.length) renderDisruptionsBlock(disruptions, el);
     const label=document.createElement('div'); label.className='section-label';
     label.innerHTML=`${lineIcon(lineInfo,22)}<span>${lineName} — Choisir une direction</span>`;
     el.appendChild(label);
-
     if (hasFilter) {
-      const tabs=document.createElement('div');
-      tabs.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
+      const tabs=document.createElement('div'); tabs.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
       [{dir:'outbound',lbl:'→ Aller'},{dir:'inbound',lbl:'← Retour'}].forEach(({dir,lbl})=>{
         const active=filter===dir;
-        const btn=document.createElement('button');
-        btn.textContent=lbl;
-        btn.style.cssText=[
-          'flex:1;height:40px;border-radius:9px;',
-          'font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;',
-          active
-            ? 'border:2px solid var(--accent);background:var(--accent-bg);color:var(--accent);'
-            : 'border:1.5px solid var(--border);background:var(--surface);color:var(--muted);'
-        ].join('');
+        const btn=document.createElement('button'); btn.textContent=lbl;
+        btn.style.cssText=['flex:1;height:40px;border-radius:9px;','font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;',active?'border:2px solid var(--accent);background:var(--accent-bg);color:var(--accent);':'border:1.5px solid var(--border);background:var(--surface);color:var(--muted);'].join('');
         btn.onclick=()=>loadDirections(stopAreaId,stopAreaName,lineId,lineInfo,lineName,dir);
         tabs.appendChild(btn);
       });
       el.appendChild(tabs);
     }
-
     const visibleRoutes=hasFilter?routes.filter(r=>r.direction_type===filter):routes;
     if (!visibleRoutes.length) { el.innerHTML+='<div class="empty"><div class="icon">😕</div>Aucune destination dans ce sens.</div>'; return; }
-
     const card=document.createElement('div'); card.className='card';
     visibleRoutes.forEach(route=>{
       const terminus=route.direction?.stop_area?.name||route.name||'?';
-      const routeSpIds=stopPoints
-        .filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id))
-        .map(sp=>sp.id);
+      const routeSpIds=stopPoints.filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id)).map(sp=>sp.id);
       const spIds=routeSpIds.length?routeSpIds:allSpIds;
       const arrow=filter==='inbound'?'←':'→';
       const item=document.createElement('div'); item.className='list-item';
-      item.innerHTML=`
-        <div style="flex-shrink:0;">${lineIcon(lineInfo,36)}</div>
-        <div class="item-info"><div class="item-name">${arrow} ${terminus}</div></div>
-        <span style="color:var(--muted);font-size:20px;">›</span>`;
+      item.innerHTML=`<div style="flex-shrink:0;">${lineIcon(lineInfo,36)}</div><div class="item-info"><div class="item-name">${arrow} ${terminus}</div></div><span style="color:var(--muted);font-size:20px;">›</span>`;
       item.onclick=()=>loadDepartures(terminus,spIds,stopAreaId,stopAreaName,lineName);
       card.appendChild(item);
     });
     el.appendChild(card);
   }
 
-  // ── Vue 4 : Horaires ────────────────────────────────────────────────────────
+  // ── Vue 4 : Horaires ──────────────────────────────────────────────────────────
   async function loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName) {
     showView('departures');
     updateBreadcrumb([
@@ -700,19 +695,22 @@ lines.forEach(l => {
     ]);
     Object.assign(state,{currentTerminus:terminus,currentStopPointIds:spIds,currentStopAreaId:stopAreaId,currentStopAreaName:stopAreaName,currentLineName:lineName});
     await refreshDepartures();
+    startAutoRefresh(); // démarre le rafraîchissement automatique
   }
 
   function getSiriStrategy(lineInfo) {
     const mode=(lineInfo.commercial_mode||'').toLowerCase();
     if (mode.includes('métro')||mode.includes('metro')||mode.includes('rer')||mode.includes('transilien')||mode.includes('train')) return 'stop-monitoring';
-    return 'estimated-timetable';
+    return 'requete-ligne';
   }
 
   async function refreshDepartures() {
     const el=document.getElementById('departures-content');
-    el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires temps réel…</div>';
-    const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef} = state;
+    // Préserve la barre de refresh si elle existe déjà
+    const existingBar = el.querySelector('.refresh-bar');
+    el.innerHTML='<div class="empty"><span class="spinner"></span> Actualisation…</div>';
 
+    const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef} = state;
     try {
       let departures=[], isRealtime=false;
       const strategy=getSiriStrategy(lineInfo);
@@ -730,7 +728,7 @@ lines.forEach(l => {
       } else {
         if (lineRef) {
           try {
-            const data=await callProxy('estimated-timetable',{LineRef:lineRef});
+            const data=await callProxy('requete-ligne',{LineRef:lineRef});
             departures=parseSiri(data,spIds,terminus);
             isRealtime=true;
           } catch(e) { /* ignore */ }
@@ -745,18 +743,17 @@ lines.forEach(l => {
         } catch(e) { /* ignore */ }
       }
 
-      // Charge les perturbations en parallèle du rendu
       const disruptions = _dirCache?.disruptions || [];
-
       renderDepartures(el,departures,terminus,isRealtime,disruptions);
     } catch(e) {
       el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;
-      renderRefreshBtn(el);
+      renderRefreshBar(el);
     }
   }
 
   function parseSiri(data,spIds,terminus) {
-    const frame=data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
+    const delivery=data?.Siri?.ServiceDelivery??data?.ServiceDelivery;
+    const frame=delivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
     const journeys=frame?.EstimatedVehicleJourney||[];
     const now=Date.now();
     const numericIds=new Set(spIds.map(extractNumericId).filter(Boolean));
@@ -809,64 +806,65 @@ lines.forEach(l => {
 
   function renderDepartures(el,departures,terminus,isRealtime,disruptions=[]) {
     el.innerHTML='';
-
-    // ── Perturbations de la ligne (collapsible) ──
-    if (disruptions.length) {
-      renderDisruptionsBlock(disruptions, el);
-    }
-
+    if (disruptions.length) renderDisruptionsBlock(disruptions, el);
     const header=document.createElement('div');
     header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;';
     header.innerHTML=`${lineIcon(state.lineInfo,30)}<span style="font-size:15px;font-weight:500;">→ ${terminus}</span><span class="fresh ${isRealtime?'fresh-rt':'fresh-th'}">${isRealtime?'⚡ Temps réel':'📅 Théorique'}</span>`;
     el.appendChild(header);
-
     if (!departures.length) {
       el.innerHTML+='<div class="empty"><div class="icon">🕐</div>Aucun passage imminent trouvé.</div>';
-      renderRefreshBtn(el); return;
-    }
-
-    const card=document.createElement('div'); card.className='card';
-    departures.forEach(dep=>{
-      const expected=new Date(dep.expectedTime);
-      const aimed=dep.aimedTime?new Date(dep.aimedTime):null;
-      const timeStr=formatTime(expected);
-      const waitMin=Math.round((expected-Date.now())/60000);
-      let waitLabel='', waitClass='';
-      if (dep.vehicleAtStop||waitMin<=0) { waitLabel='À quai'; waitClass='quai'; }
-      else if (waitMin<=1) { waitLabel='1 min'; waitClass='soon'; }
-      else { waitLabel=waitMin+' min'; waitClass=waitMin<=4?'soon':''; }
-
-      let delayBadge='';
-      if (aimed&&dep.realtime) {
-        const d=Math.round((expected-aimed)/60000);
-        if (d>0) delayBadge=`<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">+${d} min</span>`;
-        else if (d<0) delayBadge=`<span style="font-size:11px;color:#15803d;font-weight:600;margin-left:4px;">${d} min</span>`;
-      }
-      const cancelBadge=dep.cancelled?'<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">Supprimé</span>':'';
-
-      const item=document.createElement('div'); item.className='dep-item';
-      item.innerHTML=`
-        <div class="dep-left">
-          ${lineIcon(state.lineInfo,32)}
-          <div style="min-width:0;">
-            <div class="dep-dest">${dep.destination}</div>
-            <div class="dep-mode">${state.lineInfo.commercial_mode||''}</div>
+    } else {
+      const card=document.createElement('div'); card.className='card';
+      departures.forEach(dep=>{
+        const expected=new Date(dep.expectedTime);
+        const aimed=dep.aimedTime?new Date(dep.aimedTime):null;
+        const timeStr=formatTime(expected);
+        const waitMin=Math.round((expected-Date.now())/60000);
+        let waitLabel='', waitClass='';
+        if (dep.vehicleAtStop||waitMin<=0) { waitLabel='À quai'; waitClass='quai'; }
+        else if (waitMin<=1) { waitLabel='1 min'; waitClass='soon'; }
+        else { waitLabel=waitMin+' min'; waitClass=waitMin<=4?'soon':''; }
+        let delayBadge='';
+        if (aimed&&dep.realtime) {
+          const d=Math.round((expected-aimed)/60000);
+          if (d>0) delayBadge=`<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">+${d} min</span>`;
+          else if (d<0) delayBadge=`<span style="font-size:11px;color:#15803d;font-weight:600;margin-left:4px;">${d} min</span>`;
+        }
+        const cancelBadge=dep.cancelled?'<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">Supprimé</span>':'';
+        const item=document.createElement('div'); item.className='dep-item';
+        item.innerHTML=`
+          <div class="dep-left">
+            ${lineIcon(state.lineInfo,32)}
+            <div style="min-width:0;">
+              <div class="dep-dest">${dep.destination}</div>
+              <div class="dep-mode">${state.lineInfo.commercial_mode||''}</div>
+            </div>
           </div>
-        </div>
-        <div class="dep-right">
-          <div class="dep-time ${waitClass}">${waitLabel}${delayBadge}${cancelBadge}</div>
-          <div class="dep-wait ${waitClass}">${timeStr}</div>
-        </div>`;
-      card.appendChild(item);
-    });
-    el.appendChild(card);
-    renderRefreshBtn(el);
+          <div class="dep-right">
+            <div class="dep-time ${waitClass}">${waitLabel}${delayBadge}${cancelBadge}</div>
+            <div class="dep-wait ${waitClass}">${timeStr}</div>
+          </div>`;
+        card.appendChild(item);
+      });
+      el.appendChild(card);
+    }
+    renderRefreshBar(el);
   }
 
-  function renderRefreshBtn(el) {
-    const btn=document.createElement('button'); btn.className='refresh-btn';
-    btn.textContent='↻ Actualiser'; btn.onclick=refreshDepartures;
-    el.appendChild(btn);
+  function renderRefreshBar(container) {
+    const bar = document.createElement('div');
+    bar.className = 'refresh-bar';
+    bar.innerHTML = `
+      <div class="refresh-bar-left">
+        <span>Actualisation dans</span>
+        <span class="refresh-countdown" id="refresh-countdown">${countdownSeconds}s</span>
+      </div>
+      <div class="refresh-progress">
+        <div class="refresh-progress-bar" id="refresh-progress-bar" style="width:${countdownSeconds/REFRESH_INTERVAL*100}%"></div>
+      </div>
+      <button class="refresh-now-btn" onclick="manualRefresh()">↻ Maintenant</button>
+    `;
+    container.appendChild(bar);
   }
 
   function backToSearch() { showView('search'); updateBreadcrumb([]); }
