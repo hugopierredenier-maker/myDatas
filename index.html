@@ -505,18 +505,15 @@ class Panel {
       const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune direction';body.appendChild(e);return;
     }
 
-    // ✅ Onglets Aller / Retour uniquement si les deux existent
+    // Onglets Aller / Retour si les deux existent
     const hasOutbound=this._routes.some(r=>r.directionType==='outbound');
     const hasInbound =this._routes.some(r=>r.directionType==='inbound');
     const hasBoth    =hasOutbound&&hasInbound;
 
     if(hasBoth){
-      if(!this._dirFilter)this._dirFilter='outbound'; // défaut : Aller
+      if(!this._dirFilter)this._dirFilter='outbound';
       const tabs=document.createElement('div'); tabs.className='dir-tabs';
-      [
-        {dir:'outbound',lbl:'→ Aller'},
-        {dir:'inbound', lbl:'← Retour'}
-      ].forEach(({dir,lbl})=>{
+      [{dir:'outbound',lbl:'→ Aller'},{dir:'inbound',lbl:'← Retour'}].forEach(({dir,lbl})=>{
         const btn=document.createElement('button'); btn.className='dir-tab'+(this._dirFilter===dir?' active':'');
         btn.textContent=lbl;
         btn.onclick=()=>{
@@ -529,34 +526,85 @@ class Panel {
       body.appendChild(tabs);
     }
 
-    // ✅ Filtrer selon l'onglet actif (ou tout afficher si pas de filtre)
-    const visible=hasBoth
-      ? this._routes.filter(r=>r.directionType===this._dirFilter)
-      : this._routes;
+    const visible=hasBoth ? this._routes.filter(r=>r.directionType===this._dirFilter) : this._routes;
 
     if(!visible.length){
       const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune destination dans ce sens';body.appendChild(e);return;
     }
 
+    // ── Tri "Via Paris / Banlieue" pour RER et Transilien ──────────────────────
+    const isHeavyRail = ['rer','transilien','train'].some(k=>(this.lineInfo?.commercial_mode||'').toLowerCase().includes(k));
+
+    // Liste des gares parisiennes IDFM (noms normalisés)
+    const PARIS_STOPS = new Set([
+      'austerlitz','bibliotheque francois mitterrand','bercy','gare de lyon','gare du nord',
+      'gare de l est','gare saint lazare','saint lazare','lazare','montparnasse','invalides',
+      'champ de mars','orsay','javel','kennedy','passy','avenue du president kennedy',
+      'denfert rochereau','roissy','aeroport cdg','orly','massy','issy','clamart',
+      'versailles rive droite','versailles rive gauche','versailles chantiers',
+      'boulevard victor','boissy saint leger','chessy','marne la vallee',
+      'pontoise','cergy','saint germain en laye','poissy','maisons laffitte',
+      'rambouillet','dourdan','etampes','la verriere','dreux',
+      'robinson','sceaux','bourg la reine','antony',
+      'noisy le grand','torcy','bry sur marne',
+      'porte de clichy','nanterre','la defense','puteaux'
+    ]);
+
+    function isParisTerminus(terminusName) {
+      const n = terminusName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      // Terminus explicitement parisien (arrondissements ou "Paris" dans le nom)
+      if (n.includes('paris')) return true;
+      // Ou correspond à une gare connue de la liste
+      return [...PARIS_STOPS].some(p => n.includes(p) || p.includes(n.split(' ')[0]));
+    }
+
+    let groups;
+    if(isHeavyRail && visible.length > 2){
+      // Séparer via Paris vs banlieue
+      const viaP  = visible.filter(r=>isParisTerminus(r.terminus));
+      const nonP  = visible.filter(r=>!isParisTerminus(r.terminus));
+      if(viaP.length && nonP.length){
+        groups = [
+          {label:'🏛 Via / Vers Paris', routes: viaP},
+          {label:'🌳 Banlieue',         routes: nonP}
+        ];
+      } else {
+        groups = [{label:null, routes: visible}];
+      }
+    } else {
+      groups = [{label:null, routes: visible}];
+    }
+
     const list=document.createElement('div'); list.className='item-list';
-    visible.forEach(route=>{
-      const arrow=route.directionType==='inbound'?'←':'→';
-      const btn=document.createElement('button'); btn.className='item-btn';
-      btn.innerHTML=`
-        <span style="font-size:15px;flex-shrink:0;">${arrow}</span>
-        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${route.terminus}</span>
-        <i class="ti ti-chevron-right item-btn-arrow"></i>
-      `;
-      btn.onclick=()=>{
-        this.terminus=route.terminus;
-        this.spIds=route.spIds;
-        this.step='departures';
-        this.render();
-        this.refresh();
-        this.startTimer();
-      };
-      list.appendChild(btn);
+
+    groups.forEach(({label, routes})=>{
+      // Sous-titre de groupe
+      if(label){
+        const lbl=document.createElement('div');
+        lbl.style.cssText='font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 4px 4px;';
+        lbl.textContent=label;
+        list.appendChild(lbl);
+      }
+      routes.forEach(route=>{
+        const arrow=route.directionType==='inbound'?'←':'→';
+        const btn=document.createElement('button'); btn.className='item-btn';
+        btn.innerHTML=`
+          <span style="font-size:15px;flex-shrink:0;">${arrow}</span>
+          <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${route.terminus}</span>
+          <i class="ti ti-chevron-right item-btn-arrow"></i>
+        `;
+        btn.onclick=()=>{
+          this.terminus=route.terminus;
+          this.spIds=route.spIds;
+          this.step='departures';
+          this.render();
+          this.refresh();
+          this.startTimer();
+        };
+        list.appendChild(btn);
+      });
     });
+
     body.appendChild(list);
   }
 
