@@ -424,6 +424,7 @@ Actualisation automatique toutes les 20 s
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
 <script>
+  let autoRefresh = null;
 // ===== FAVORIS =====
 
 function getFavorites() {
@@ -853,7 +854,7 @@ function stopAutoRefresh() {
 
 }
   async function refreshDepartures() {
-    let autoRefresh = null;
+    
     const el=document.getElementById('departures-content'); el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
     const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef}=state;
     try {
