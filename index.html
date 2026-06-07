@@ -537,8 +537,19 @@ class Panel {
         const fb = await api('v2/navitia/stop_areas/'+this.stopId+'/stop_points', {count:30}).catch(()=>({stop_points:[]}));
         sp = fb.stop_points||[];
       }
-      this._routes  = rd.routes||[];
-      this._spCache = sp;
+     const routes = rd.routes || [];
+
+const inbound = routes.find(
+  r => r.direction_type === "inbound"
+);
+
+const outbound = routes.find(
+  r => r.direction_type === "outbound"
+);
+
+this._routes = [inbound, outbound].filter(Boolean);
+
+this._spCache = sp;
     } catch { this._routes=[]; this._spCache=[]; }
     const body2 = document.getElementById(`pb-${this.id}`);
     if (body2) { body2.innerHTML=''; this.renderDirections(body2); }
@@ -560,12 +571,21 @@ class Panel {
     }
     const list = document.createElement('div'); list.className = 'item-list';
     this._routes.forEach(route => {
-      const terminus = route.direction?.stop_area?.name||route.name||'?';
-      const rSp = (this._spCache||[]).filter(s=>!s.routes?.length||s.routes.some(r=>r.id===route.id)).map(s=>s.id);
-      const spIds = rSp.length ? rSp : (this._spCache||[]).map(s=>s.id);
-      const arrow = route.direction_type==='inbound' ? '←' : '→';
-      const btn = document.createElement('button'); btn.className = 'item-btn';
-      btn.innerHTML = `<span style="color:var(--muted);font-size:14px;">${arrow}</span><span>${terminus}</span><i class="ti ti-chevron-right item-btn-arrow"></i>`;
+const terminus = route.direction?.stop_area?.name || route.name || '?';
+
+const isInbound =
+  route.direction_type === 'inbound';
+
+const arrow = isInbound ? '⬅' : '➡';
+
+const label = isInbound
+  ? `Retour vers ${terminus}`
+  : `Aller vers ${terminus}`;
+btn.innerHTML = `
+  <span style="font-size:16px">${arrow}</span>
+  <span>${label}</span>
+  <i class="ti ti-chevron-right item-btn-arrow"></i>
+`;
       btn.onclick = () => {
         this.terminus = terminus;
         this.spIds    = spIds;
