@@ -457,11 +457,26 @@ class Panel {
         } catch {}
       }
 
-      // On garde inbound + outbound (1 de chaque max)
-      const inbound =allRoutes.find(r=>r.direction_type==='inbound');
-      const outbound=allRoutes.find(r=>r.direction_type==='outbound');
-      this._routes  =[inbound,outbound].filter(Boolean);
-      if (!this._routes.length) this._routes=allRoutes; // fallback : toutes les routes
+// Pour les RER/Transilien : on garde toutes les routes (plusieurs terminus)
+// Pour Métro/Tram/Bus : on groupe par direction_type (inbound/outbound)
+const mode = (this.lineInfo?.commercial_mode || '').toLowerCase();
+const isHeavyRail = mode.includes('rer') || mode.includes('transilien') || mode.includes('train');
+
+if (isHeavyRail) {
+  // Toutes les routes, dédupliquées par terminus
+  const seen = new Set();
+  this._routes = allRoutes.filter(r => {
+    const t = r.direction?.stop_area?.name || r.name || '';
+    if (seen.has(t)) return false;
+    seen.add(t); return true;
+  });
+} else {
+  // Métro/Tram/Bus : 1 inbound + 1 outbound suffit
+  const inbound  = allRoutes.find(r => r.direction_type === 'inbound');
+  const outbound = allRoutes.find(r => r.direction_type === 'outbound');
+  this._routes   = [inbound, outbound].filter(Boolean);
+  if (!this._routes.length) this._routes = allRoutes;
+}
       this._spCache =sp;
     } catch {
       this._routes=[]; this._spCache=[];
