@@ -32,25 +32,24 @@
     }
     body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    /* Header */
     .header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px;
-      background: rgba(255,255,255,.85); backdrop-filter: blur(20px);
-      border-bottom: 0.5px solid var(--border);
+      padding: 16px 20px; background: rgba(255,255,255,.8);
+      backdrop-filter: blur(20px); border-bottom: 0.5px solid var(--border);
       position: sticky; top: 0; z-index: 50;
     }
     @media (prefers-color-scheme: dark) { .header { background: rgba(28,28,30,.9); } }
     .header-title { font-size: 17px; font-weight: 600; }
     .header-clock { font-size: 14px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-    /* Grid */
-    .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; padding: 14px; min-height: calc(100vh - 53px); }
+    .grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; padding: 14px; min-height: calc(100vh - 53px);
+    }
     @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
 
-    /* Panel */
     .panel {
-      background: rgba(255,255,255,.8); backdrop-filter: blur(20px);
+      background: rgba(255,255,255,.75); backdrop-filter: blur(20px);
       border: 0.5px solid rgba(255,255,255,.6); border-radius: 22px;
       overflow: hidden; display: flex; flex-direction: column;
       box-shadow: 0 4px 20px rgba(0,0,0,.06); min-height: 500px;
@@ -59,23 +58,21 @@
 
     .panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px 10px; border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
+      padding: 12px 14px 10px; border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
     }
     .panel-num { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
     .panel-actions { display: flex; align-items: center; gap: 6px; }
     .panel-reset {
-      background: none; border: none; cursor: pointer;
-      color: var(--muted); font-size: 15px; padding: 3px 6px;
-      border-radius: 6px; line-height: 1; transition: color .15s, background .15s;
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      font-size: 15px; padding: 2px 5px; border-radius: 6px; line-height: 1;
+      transition: color .15s, background .15s;
     }
     .panel-reset:hover { color: var(--danger); background: var(--danger-bg); }
     .panel-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* Search step */
     .step-search {
       flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 20px 14px; gap: 12px;
+      align-items: center; justify-content: center; padding: 20px 14px; gap: 12px;
     }
     .step-search-icon { font-size: 32px; opacity: .25; }
     .step-search-label { font-size: 13px; color: var(--muted); }
@@ -83,25 +80,23 @@
     .search-field input {
       width: 100%; height: 38px; padding: 0 36px 0 12px;
       background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 10px; color: var(--text);
-      font-family: inherit; font-size: 13px; outline: none; transition: border-color .15s;
+      border-radius: 10px; color: var(--text); font-family: inherit; font-size: 13px;
+      outline: none; transition: border-color .15s;
     }
     .search-field input:focus { border-color: var(--accent); }
-    .search-field .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+    .search-field i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
     .ac-drop {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0;
       background: var(--surface); border: 0.5px solid var(--border);
       border-radius: 10px; z-index: 100; overflow: hidden;
-      box-shadow: 0 8px 24px rgba(0,0,0,.12);
-      max-height: 200px; overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 200px; overflow-y: auto;
     }
-    .ac-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 0.5px solid var(--sep); transition: background .1s; }
-    .ac-item:last-child { border-bottom: none; }
-    .ac-item:hover, .ac-item.active { background: var(--accent-bg); }
-    .ac-item-name { font-weight: 500; }
-    .ac-item-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .ac-drop-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 0.5px solid var(--sep); transition: background .1s; }
+    .ac-drop-item:last-child { border-bottom: none; }
+    .ac-drop-item:hover, .ac-drop-item.active { background: var(--accent-bg); }
+    .ac-drop-name { font-weight: 500; }
+    .ac-drop-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-    /* Step back */
     .step-back {
       display: flex; align-items: center; gap: 6px;
       padding: 9px 14px; font-size: 12px; font-weight: 500; color: var(--accent);
@@ -110,33 +105,47 @@
     }
     .step-back:hover { background: var(--accent-bg); }
 
-    /* Item list */
+    /* Onglets Aller / Retour */
+    .dir-tabs {
+      display: flex; gap: 8px; padding: 8px 8px 4px; flex-shrink: 0;
+    }
+    .dir-tab {
+      flex: 1; height: 34px; border-radius: 8px; font-family: inherit;
+      font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); transition: all .15s;
+    }
+    .dir-tab.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+    .dir-tab:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
     .item-list { flex: 1; overflow-y: auto; padding: 6px; }
     .item-btn {
-      display: flex; align-items: center; gap: 8px; width: 100%;
-      padding: 9px 10px; margin-bottom: 3px;
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 9px 10px; margin-bottom: 3px;
       background: none; border: 0.5px solid var(--border);
       border-radius: 10px; cursor: pointer; color: var(--text);
       font-family: inherit; font-size: 12px; font-weight: 500;
-      text-align: left; transition: background .1s;
+      text-align: left; transition: background .1s, border-color .1s;
     }
     .item-btn:hover { background: var(--surface2); }
     .item-btn:last-child { margin-bottom: 0; }
     .item-btn-sub { color: var(--muted); font-size: 11px; font-weight: 400; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-btn-arrow { color: var(--muted); font-size: 12px; margin-left: auto; flex-shrink: 0; }
 
-    /* Departures */
     .dep-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .dep-subheader {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 14px; border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
     }
     .dep-direction { font-size: 12px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fresh { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+    .fresh { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 99px; flex-shrink: 0; }
     .fresh.rt { background: var(--success-bg); color: var(--success); }
     .fresh.th { background: var(--warning-bg); color: var(--warning); }
+
     .dep-list { flex: 1; overflow-y: auto; }
-    .dep-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 0.5px solid var(--sep); gap: 8px; }
+    .dep-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px; border-bottom: 0.5px solid var(--sep); gap: 8px;
+    }
     .dep-row:last-child { border-bottom: none; }
     .dep-dest { font-size: 12px; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dep-right { text-align: right; flex-shrink: 0; }
@@ -148,8 +157,10 @@
     .dep-delay.late  { color: var(--danger); }
     .dep-delay.early { color: var(--success); }
 
-    /* Footer */
-    .dep-footer { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 0.5px solid var(--sep); flex-shrink: 0; }
+    .dep-footer {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-top: 0.5px solid var(--sep); flex-shrink: 0;
+    }
     .dep-footer-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; animation: pulse 2s infinite; }
     .dep-footer-dot.rt { background: var(--success); }
     .dep-footer-dot.th { background: var(--warning); }
@@ -157,10 +168,9 @@
     .dep-footer-progress { flex: 1; height: 2px; background: var(--sep); border-radius: 99px; overflow: hidden; }
     .dep-footer-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 1s linear; }
     .dep-footer-cd { font-size: 11px; color: var(--muted); min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
-    .dep-footer-btn { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; padding: 2px 4px; border-radius: 5px; }
+    .dep-footer-btn { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; padding: 2px 4px; border-radius: 5px; transition: background .1s; }
     .dep-footer-btn:hover { background: var(--accent-bg); }
 
-    /* States */
     .panel-loader { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; }
     .spinner { width: 16px; height: 16px; border: 2px solid var(--sep); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -177,32 +187,26 @@
 <div class="grid" id="grid"></div>
 
 <script>
-// Clock
-setInterval(() => {
-  document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}, 1000);
+setInterval(()=>{ document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); },1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-// Config
 const PROXY       = '/api/prim';
 const REFRESH_SEC = 20;
 
-// API
 async function api(endpoint, params={}) {
-  const qs = new URLSearchParams({endpoint,...params}).toString();
-  const r  = await fetch(PROXY+'?'+qs);
+  const qs=new URLSearchParams({endpoint,...params}).toString();
+  const r=await fetch(PROXY+'?'+qs);
   if (!r.ok) throw new Error('HTTP '+r.status);
   return r.json();
 }
 
-// Helpers
 function textColor(hex) {
-  hex=(hex||'').replace('#',''); if(hex.length!==6) return '#fff';
+  hex=(hex||'').replace('#',''); if(hex.length!==6)return'#fff';
   const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
-  return (r*299+g*587+b*114)/1000>128?'#000':'#fff';
+  return(r*299+g*587+b*114)/1000>128?'#000':'#fff';
 }
 
-function lineIcon(info, size=24) {
+function lineIcon(info,size=24) {
   const code=String(info.code||info.label||'?');
   const mode=(info.commercial_mode||'').toLowerCase();
   const bg=info.color?'#'+info.color.replace('#',''):'#888';
@@ -220,48 +224,47 @@ function lineIcon(info, size=24) {
   } else {
     const cw=fs*.65; w=Math.max(size,Math.round(cw*code.length+size*.5));
     shape=`<rect x="1" y="1" width="${w-2}" height="${size-2}" rx="${rv}" fill="${bg}"/>`;
-    return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
+    return`<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
   }
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
+  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
 }
 
-function formatTime(d) { return d?d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'--:--'; }
-function toLineRef(lineId,codes) {
-  if (codes) { const s=codes.find(c=>c.type==='source'); if(s){const m=s.value.match(/Line:(C[\w-]+)/);if(m)return`STIF:Line::${m[1]}:`;} }
-  const m=lineId.match(/IDFM:(C[\w-]+)/); return m?`STIF:Line::${m[1]}:`:null;
+function formatTime(d){return d?d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'--:--';}
+function toLineRef(lineId,codes){
+  if(codes){const s=codes.find(c=>c.type==='source');if(s){const m=s.value.match(/Line:(C[\w-]+)/);if(m)return`STIF:Line::${m[1]}:`;}}
+  const m=lineId.match(/IDFM:(C[\w-]+)/);return m?`STIF:Line::${m[1]}:`:null;
 }
-function extractNumId(id) { const m=(id||'').match(/:(\d+)$/); return m?m[1]:null; }
-function toMonRef(spId)   { const m=(spId||'').match(/:(\d+)$/); return m?`STIF:StopPoint:Q:${m[1]}:`:null; }
-function norm(s) { return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
-function lMatch(a,b) {
+function extractNumId(id){const m=(id||'').match(/:(\d+)$/);return m?m[1]:null;}
+function toMonRef(spId){const m=(spId||'').match(/:(\d+)$/);return m?`STIF:StopPoint:Q:${m[1]}:`:null;}
+function norm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function lMatch(a,b){
   const na=norm(a),nb=norm(b);
-  if (na===nb||na.includes(nb)||nb.includes(na)) return true;
+  if(na===nb||na.includes(nb)||nb.includes(na))return true;
   const wa=na.split(/\s+/).find(w=>w.length>=4),wb=nb.split(/\s+/).find(w=>w.length>=4);
-  return !!(wa&&wb&&wa===wb);
+  return!!(wa&&wb&&wa===wb);
 }
-function n2iso(s) { if(!s)return null; return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`; }
-function getStrategy(mode) {
+function n2iso(s){if(!s)return null;return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`;}
+function getStrategy(mode){
   const m=(mode||'').toLowerCase();
-  return (m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'stop-monitoring':'requete-ligne';
+  return(m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'stop-monitoring':'estimated-timetable';
 }
 
-// Parsers
-function parseSM(data,terminus) {
+function parseSM(data,terminus){
   const visits=data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
   const now=Date.now(),res=[];
   visits.forEach(v=>{
     const vj=v.MonitoredVehicleJourney||{},c=vj.MonitoredCall||{};
     const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||vj.DirectionName?.[0]?.value||'';
-    if (terminus&&dest&&!lMatch(terminus,dest)) return;
+    if(terminus&&dest&&!lMatch(terminus,dest))return;
     const et=c.ExpectedDepartureTime||c.AimedDepartureTime||c.ExpectedArrivalTime||c.AimedArrivalTime;
     const at=c.AimedDepartureTime||c.AimedArrivalTime;
-    if (!et||new Date(et).getTime()<now-60000) return;
+    if(!et||new Date(et).getTime()<now-60000)return;
     res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
   });
   return res.sort((a,b)=>new Date(a.et)-new Date(b.et));
 }
 
-function parseRL(data,spIds,terminus) {
+function parseET(data,spIds,terminus){
   const delivery=data?.Siri?.ServiceDelivery??data?.ServiceDelivery;
   const frame=delivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
   const journeys=frame?.EstimatedVehicleJourney||[];
@@ -270,27 +273,27 @@ function parseRL(data,spIds,terminus) {
     (vj.EstimatedCalls?.EstimatedCall||[]).forEach(c=>{
       const sr=c.StopPointRef?.value||'';
       const rn=sr.match(/:Q:(\d+):/)?.[1]||sr.match(/:(\d+):?$/)?.[1];
-      if (!rn||!nums.has(rn)) return;
+      if(!rn||!nums.has(rn))return;
       const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
-      if (terminus&&dest&&!lMatch(terminus,dest)) return;
+      if(terminus&&dest&&!lMatch(terminus,dest))return;
       const et=c.ExpectedDepartureTime||c.ExpectedArrivalTime||c.AimedDepartureTime||c.AimedArrivalTime;
       const at=c.AimedDepartureTime||c.AimedArrivalTime;
-      if (!et||new Date(et).getTime()<now-60000) return;
+      if(!et||new Date(et).getTime()<now-60000)return;
       res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
     });
   });
   return res.sort((a,b)=>new Date(a.et)-new Date(b.et));
 }
 
-function parseNAV(deps,terminus) {
+function parseNAV(deps,terminus){
   return deps.map(dep=>{
     const sdt=dep.stop_date_time||{},info=dep.display_informations||{};
     const et=n2iso(sdt.departure_date_time||sdt.arrival_date_time);
-    return {et,at:null,dest:info.direction||info.headsign||terminus,atStop:false,cancelled:false,rt:false};
+    return{et,at:null,dest:info.direction||info.headsign||terminus,atStop:false,cancelled:false,rt:false};
   }).filter(d=>d.et&&new Date(d.et).getTime()>=Date.now()-60000);
 }
 
-// Panel class
+// ── Panel ─────────────────────────────────────────────────────────────────────
 class Panel {
   constructor(id) {
     this.id=id; this.el=null;
@@ -299,136 +302,136 @@ class Panel {
     this.lineId=null; this.lineInfo=null; this.lineRef=null;
     this.spIds=[]; this.terminus=null;
     this._lines=null; this._routes=null; this._spCache=null;
+    this._dirFilter=null; // 'outbound' | 'inbound' | null
     this.countdown=REFRESH_SEC; this.timer=null;
     this.acTimer=null; this.acRes=[]; this.acIdx=-1;
     this.isRT=false;
   }
 
-  mount(el) { this.el=el; this.render(); }
+  mount(el){this.el=el;this.render();}
 
-  render() {
-    if (!this.el) return;
-    const badge = this.lineInfo ? lineIcon(this.lineInfo,20) : '';
-    const resetBtn = this.step!=='search'
-      ? `<button class="panel-reset" title="Réinitialiser"><i class="ti ti-x"></i></button>` : '';
+  render(){
+    if(!this.el)return;
+    const badge=this.lineInfo?lineIcon(this.lineInfo,20):'';
+    const resetBtn=this.step!=='search'?`<button class="panel-reset" title="Réinitialiser">✕</button>`:'';
     this.el.innerHTML=`
       <div class="panel-header">
         <span class="panel-num">Arrêt ${this.id+1}</span>
         <div class="panel-actions">
-          <div>${badge}</div>
+          <div class="panel-line-badge">${badge}</div>
           ${resetBtn}
         </div>
       </div>
-      <div class="panel-body" id="pb-${this.id}"></div>`;
+      <div class="panel-body" id="pb-${this.id}"></div>
+    `;
     this.el.querySelector('.panel-reset')?.addEventListener('click',()=>this.reset());
     this.renderBody();
   }
 
-  renderBody() {
-    const body=document.getElementById('pb-'+this.id);
-    if (!body) return;
-    body.innerHTML='';
+  renderBody(){
+    const body=document.getElementById(`pb-${this.id}`);
+    if(!body)return; body.innerHTML='';
     if      (this.step==='search')     this.renderSearch(body);
     else if (this.step==='lines')      this.renderLines(body);
     else if (this.step==='directions') this.renderDirections(body);
     else if (this.step==='departures') this.renderDepartures(body);
   }
 
-  // ── Step 1 : Search ──────────────────────────────────────────────────────
-  renderSearch(body) {
+  // ── Search ──────────────────────────────────────────────────────────────────
+  renderSearch(body){
     body.innerHTML=`
       <div class="step-search">
         <div class="step-search-icon">📍</div>
         <div class="step-search-label">Chercher un arrêt</div>
         <div class="search-field">
           <input type="text" placeholder="Ex: Châtelet, Nation…" autocomplete="off" id="si-${this.id}"/>
-          <i class="ti ti-search search-icon"></i>
+          <i class="ti ti-search"></i>
           <div class="ac-drop" id="ac-${this.id}" style="display:none;"></div>
         </div>
-      </div>`;
-    const input=document.getElementById('si-'+this.id);
-    const drop =document.getElementById('ac-'+this.id);
-
+      </div>
+    `;
+    const input=document.getElementById(`si-${this.id}`);
+    const drop=document.getElementById(`ac-${this.id}`);
     input.addEventListener('input',()=>{
       clearTimeout(this.acTimer);
       const q=input.value.trim();
-      if (q.length<2){drop.style.display='none';return;}
+      if(q.length<2){drop.style.display='none';return;}
       drop.style.display='block';
-      drop.innerHTML='<div class="ac-item"><div class="spinner" style="margin:auto;"></div></div>';
+      drop.innerHTML='<div class="ac-drop-item"><span class="spinner" style="display:inline-block;"></span></div>';
       this.acTimer=setTimeout(async()=>{
-        try {
+        try{
           const data=await api('v2/navitia/places',{q,count:8});
           this.acRes=(data.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
           this.acIdx=-1;
-          if (!this.acRes.length){drop.style.display='none';return;}
+          if(!this.acRes.length){drop.style.display='none';return;}
           drop.innerHTML=this.acRes.map((p,i)=>{
             const s=p.stop_area||p.stop_point;
             const modes=(s.physical_modes||[]).map(m=>m.name).join(' · ');
-            return `<div class="ac-item" data-i="${i}"><div class="ac-item-name">${s.name}</div>${modes?`<div class="ac-item-sub">${modes}</div>`:''}</div>`;
+            return`<div class="ac-drop-item" data-i="${i}"><div class="ac-drop-name">${s.name}</div>${modes?`<div class="ac-drop-sub">${modes}</div>`:''}</div>`;
           }).join('');
-          drop.querySelectorAll('.ac-item').forEach(item=>{
+          drop.querySelectorAll('.ac-drop-item').forEach(item=>{
             item.addEventListener('mousedown',e=>{e.preventDefault();this.selectStop(this.acRes[+item.dataset.i]);});
           });
-        } catch {drop.style.display='none';}
+        }catch{drop.style.display='none';}
       },260);
     });
-
     input.addEventListener('keydown',e=>{
-      const items=drop.querySelectorAll('.ac-item');
-      if (e.key==='ArrowDown'){e.preventDefault();this.acIdx=Math.min(this.acIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
-      if (e.key==='ArrowUp')  {e.preventDefault();this.acIdx=Math.max(this.acIdx-1,0);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
-      if (e.key==='Enter'&&this.acIdx>=0&&this.acRes[this.acIdx]) this.selectStop(this.acRes[this.acIdx]);
-      if (e.key==='Escape') drop.style.display='none';
+      const items=drop.querySelectorAll('.ac-drop-item');
+      if(e.key==='ArrowDown'){e.preventDefault();this.acIdx=Math.min(this.acIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
+      if(e.key==='ArrowUp'){e.preventDefault();this.acIdx=Math.max(this.acIdx-1,0);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
+      if(e.key==='Enter'&&this.acIdx>=0&&this.acRes[this.acIdx])this.selectStop(this.acRes[this.acIdx]);
+      if(e.key==='Escape')drop.style.display='none';
     });
-
     document.addEventListener('click',e=>{
-      if (!e.target.closest('#si-'+this.id)&&!e.target.closest('#ac-'+this.id)) drop.style.display='none';
+      if(!e.target.closest(`#si-${this.id}`)&&!e.target.closest(`#ac-${this.id}`))drop.style.display='none';
     });
   }
 
-  async selectStop(place) {
+  async selectStop(place){
     const s=place.stop_area||place.stop_point;
     this.stopId=s.id; this.stopName=s.name; this._lines=null;
     this.step='lines'; this.render();
     await this.fetchLines();
   }
 
-  // ── Step 2 : Lines ───────────────────────────────────────────────────────
-  async fetchLines() {
-    try {
+  // ── Lines ───────────────────────────────────────────────────────────────────
+  async fetchLines(){
+    const body=document.getElementById(`pb-${this.id}`);
+    if(!body)return;
+    const list=body.querySelector('.item-list');
+    if(list)list.innerHTML='<div class="panel-loader"><div class="spinner"></div></div>';
+    try{
       const data=await api('v2/navitia/stop_areas/'+this.stopId+'/lines',{count:40});
       const lines=data.lines||[];
       const modeOrder={'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3};
       const rank=l=>{const m=(l.commercial_modes?.[0]?.name||'').toLowerCase();const e=Object.entries(modeOrder).find(([k])=>m.includes(k));return e?e[1]:4;};
       lines.sort((a,b)=>{const d=rank(a)-rank(b);return d||(a.code||'').localeCompare(b.code||'',undefined,{numeric:true});});
       this._lines=lines;
-    } catch {this._lines=[];}
-    const body=document.getElementById('pb-'+this.id);
-    if (body){body.innerHTML='';this.renderLines(body);}
+    }catch{this._lines=[];}
+    const body2=document.getElementById(`pb-${this.id}`);
+    if(body2){body2.innerHTML='';this.renderLines(body2);}
   }
 
-  renderLines(body) {
+  renderLines(body){
     const back=document.createElement('div'); back.className='step-back';
     back.innerHTML=`<i class="ti ti-chevron-left"></i>${this.stopName}`;
     back.onclick=()=>this.goStep('search');
     body.appendChild(back);
-
-    if (!this._lines){
+    if(!this._lines){
       const l=document.createElement('div');l.className='panel-loader';l.innerHTML='<div class="spinner"></div> Chargement…';body.appendChild(l);return;
     }
-    if (!this._lines.length){
+    if(!this._lines.length){
       const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune ligne trouvée';body.appendChild(e);return;
     }
-    const list=document.createElement('div');list.className='item-list';
+    const list=document.createElement('div'); list.className='item-list';
     this._lines.forEach(l=>{
       const info={code:l.code||l.name,color:l.color,commercial_mode:l.commercial_modes?.[0]?.name||'',codes:l.codes||[]};
       const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,2).join(' · ');
-      const btn=document.createElement('button');btn.className='item-btn';
+      const btn=document.createElement('button'); btn.className='item-btn';
       btn.innerHTML=`${lineIcon(info,22)}<span>${l.name||l.code}</span><span class="item-btn-sub">${termini}</span><i class="ti ti-chevron-right item-btn-arrow"></i>`;
       btn.onclick=()=>{
-        this.lineId=l.id; this.lineInfo=info;
-        this.lineRef=toLineRef(l.id,l.codes||[]);
-        this._routes=null; this._spCache=null;
+        this.lineId=l.id; this.lineInfo=info; this.lineRef=toLineRef(l.id,l.codes||[]);
+        this._routes=null; this._spCache=null; this._dirFilter=null;
         this.step='directions'; this.render();
         this.fetchDirections();
       };
@@ -437,93 +440,128 @@ class Panel {
     body.appendChild(list);
   }
 
-  // ── Step 3 : Directions ──────────────────────────────────────────────────
-  async fetchDirections() {
-    try {
-      // Routes de la ligne
-      const routesData=await api('v2/navitia/lines/'+this.lineId+'/routes',{count:10});
+  // ── Directions ──────────────────────────────────────────────────────────────
+  async fetchDirections(){
+    const body=document.getElementById(`pb-${this.id}`);
+    if(!body)return;
+    // Afficher loader sous le back
+    const loader=document.createElement('div'); loader.className='panel-loader'; loader.innerHTML='<div class="spinner"></div> Chargement…';
+    body.querySelector('.item-list')?.remove();
+    body.appendChild(loader);
+
+    try{
+      const [routesData,spData]=await Promise.all([
+        api('v2/navitia/lines/'+this.lineId+'/routes',{count:20}),
+        api('v2/navitia/stop_areas/'+this.stopId+'/lines/'+this.lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}))
+      ]);
+
+      let stopPoints=spData.stop_points||[];
+      // Fallback si aucun stop_point trouvé pour cette ligne
+      if(!stopPoints.length){
+        const fb=await api('v2/navitia/stop_areas/'+this.stopId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));
+        stopPoints=fb.stop_points||[];
+      }
+      this._spCache=stopPoints;
+
+      // ✅ Toutes les routes, sans filtrage ni troncature
       const allRoutes=routesData.routes||[];
 
-      // Stop_points de cet arrêt sur cette ligne
-      let sp=[];
-      try {
-        const spd=await api('v2/navitia/stop_areas/'+this.stopId+'/lines/'+this.lineId+'/stop_points',{count:30});
-        sp=spd.stop_points||[];
-      } catch {}
-      if (!sp.length) {
-        try {
-          const fb=await api('v2/navitia/stop_areas/'+this.stopId+'/stop_points',{count:30});
-          sp=fb.stop_points||[];
-        } catch {}
-      }
+      // Pour chaque route, calculer les spIds correspondants
+      this._routes=allRoutes.map(route=>{
+        const terminus=route.direction?.stop_area?.name||route.name||'?';
+        // Stop points qui appartiennent à cette route
+        const routeSpIds=stopPoints
+          .filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id))
+          .map(sp=>sp.id);
+        const spIds=routeSpIds.length?routeSpIds:stopPoints.map(sp=>sp.id);
+        return {
+          id: route.id,
+          terminus,
+          spIds,
+          directionType: route.direction_type||'outbound' // 'outbound' | 'inbound'
+        };
+      });
 
-// Pour les RER/Transilien : on garde toutes les routes (plusieurs terminus)
-// Pour Métro/Tram/Bus : on groupe par direction_type (inbound/outbound)
-const mode = (this.lineInfo?.commercial_mode || '').toLowerCase();
-const isHeavyRail = mode.includes('rer') || mode.includes('transilien') || mode.includes('train');
-
-if (isHeavyRail) {
-  // Toutes les routes, dédupliquées par terminus
-  const seen = new Set();
-  this._routes = allRoutes.filter(r => {
-    const t = r.direction?.stop_area?.name || r.name || '';
-    if (seen.has(t)) return false;
-    seen.add(t); return true;
-  });
-} else {
-  // Métro/Tram/Bus : 1 inbound + 1 outbound suffit
-  const inbound  = allRoutes.find(r => r.direction_type === 'inbound');
-  const outbound = allRoutes.find(r => r.direction_type === 'outbound');
-  this._routes   = [inbound, outbound].filter(Boolean);
-  if (!this._routes.length) this._routes = allRoutes;
-}
-      this._spCache =sp;
-    } catch {
-      this._routes=[]; this._spCache=[];
+    }catch(e){
+      this._routes=[];
+      console.error('fetchDirections error',e);
     }
-    const body=document.getElementById('pb-'+this.id);
-    if (body){body.innerHTML='';this.renderDirections(body);}
+
+    // Redessiner
+    const body2=document.getElementById(`pb-${this.id}`);
+    if(body2){body2.innerHTML='';this.renderDirections(body2);}
   }
 
-  renderDirections(body) {
-    const back=document.createElement('div');back.className='step-back';
+  renderDirections(body){
+    const back=document.createElement('div'); back.className='step-back';
     back.innerHTML=`<i class="ti ti-chevron-left"></i>Lignes`;
     back.onclick=()=>{this.step='lines';this.render();};
     body.appendChild(back);
 
-    if (!this._routes){
+    if(!this._routes){
       const l=document.createElement('div');l.className='panel-loader';l.innerHTML='<div class="spinner"></div> Chargement…';body.appendChild(l);return;
     }
-    if (!this._routes.length){
+    if(!this._routes.length){
       const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune direction';body.appendChild(e);return;
     }
-    const list=document.createElement('div');list.className='item-list';
-    this._routes.forEach(route=>{
-      const terminus=route.direction?.stop_area?.name||route.name||'?';
-      const isInbound=route.direction_type==='inbound';
-      const arrow=isInbound?'←':'→';
-      const label=isInbound?'Retour':'Aller';
 
-      // Stop_points qui servent cette route
-      const routeSpIds=(this._spCache||[])
-        .filter(sp=>!(sp.routes?.length)||sp.routes.some(r=>r.id===route.id))
-        .map(sp=>sp.id);
-      const spIds=routeSpIds.length?routeSpIds:(this._spCache||[]).map(sp=>sp.id);
+    // ✅ Onglets Aller / Retour uniquement si les deux existent
+    const hasOutbound=this._routes.some(r=>r.directionType==='outbound');
+    const hasInbound =this._routes.some(r=>r.directionType==='inbound');
+    const hasBoth    =hasOutbound&&hasInbound;
 
-      const btn=document.createElement('button');btn.className='item-btn';
-      btn.innerHTML=`<span style="font-size:16px;flex-shrink:0;">${arrow}</span><span>${label}</span><span class="item-btn-sub">${terminus}</span><i class="ti ti-chevron-right item-btn-arrow"></i>`;
+    if(hasBoth){
+      if(!this._dirFilter)this._dirFilter='outbound'; // défaut : Aller
+      const tabs=document.createElement('div'); tabs.className='dir-tabs';
+      [
+        {dir:'outbound',lbl:'→ Aller'},
+        {dir:'inbound', lbl:'← Retour'}
+      ].forEach(({dir,lbl})=>{
+        const btn=document.createElement('button'); btn.className='dir-tab'+(this._dirFilter===dir?' active':'');
+        btn.textContent=lbl;
+        btn.onclick=()=>{
+          this._dirFilter=dir;
+          const body3=document.getElementById(`pb-${this.id}`);
+          if(body3){body3.innerHTML='';this.renderDirections(body3);}
+        };
+        tabs.appendChild(btn);
+      });
+      body.appendChild(tabs);
+    }
+
+    // ✅ Filtrer selon l'onglet actif (ou tout afficher si pas de filtre)
+    const visible=hasBoth
+      ? this._routes.filter(r=>r.directionType===this._dirFilter)
+      : this._routes;
+
+    if(!visible.length){
+      const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune destination dans ce sens';body.appendChild(e);return;
+    }
+
+    const list=document.createElement('div'); list.className='item-list';
+    visible.forEach(route=>{
+      const arrow=route.directionType==='inbound'?'←':'→';
+      const btn=document.createElement('button'); btn.className='item-btn';
+      btn.innerHTML=`
+        <span style="font-size:15px;flex-shrink:0;">${arrow}</span>
+        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${route.terminus}</span>
+        <i class="ti ti-chevron-right item-btn-arrow"></i>
+      `;
       btn.onclick=()=>{
-        this.terminus=terminus; this.spIds=spIds;
-        this.step='departures'; this.render();
-        this.refresh(); this.startTimer();
+        this.terminus=route.terminus;
+        this.spIds=route.spIds;
+        this.step='departures';
+        this.render();
+        this.refresh();
+        this.startTimer();
       };
       list.appendChild(btn);
     });
     body.appendChild(list);
   }
 
-  // ── Step 4 : Departures ──────────────────────────────────────────────────
-  renderDepartures(body) {
+  // ── Departures ──────────────────────────────────────────────────────────────
+  renderDepartures(body){
     body.innerHTML=`
       <div class="dep-view">
         <div class="dep-subheader">
@@ -540,15 +578,16 @@ if (isHeavyRail) {
             <div class="dep-footer-bar" id="bar-${this.id}" style="width:100%"></div>
           </div>
           <span class="dep-footer-cd" id="cd-${this.id}">${this.countdown}s</span>
-          <button class="dep-footer-btn" title="Actualiser" onclick="panels[${this.id}].manualRefresh()"><i class="ti ti-refresh"></i></button>
+          <button class="dep-footer-btn" title="Actualiser" onclick="panels[${this.id}].manualRefresh()">↻</button>
         </div>
-      </div>`;
+      </div>
+    `;
   }
 
-  updateDepList(deps) {
-    const list=document.getElementById('dep-list-'+this.id);
-    if (!list) return;
-    if (!deps.length){
+  updateDepList(deps){
+    const list=document.getElementById(`dep-list-${this.id}`);
+    if(!list)return;
+    if(!deps.length){
       list.innerHTML='<div class="panel-empty"><i class="ti ti-clock-off"></i>Aucun passage imminent</div>';return;
     }
     list.innerHTML='';
@@ -559,13 +598,13 @@ if (isHeavyRail) {
       const waitMin=Math.round((expected-now)/60000);
       const timeStr=formatTime(expected);
       let waitLabel=waitMin+' min',cls='';
-      if (dep.atStop||waitMin<=0){waitLabel='À quai';cls='quai';}
-      else if (waitMin===1){waitLabel='1 min';cls='soon';}
-      else if (waitMin<=4){cls='soon';}
+      if(dep.atStop||waitMin<=0){waitLabel='À quai';cls='quai';}
+      else if(waitMin===1){waitLabel='1 min';cls='soon';}
+      else if(waitMin<=4){cls='soon';}
       let delay='';
-      if (aimed&&dep.rt){const d=Math.round((expected-aimed)/60000);if(d>0)delay=`<span class="dep-delay late">+${d}'</span>`;else if(d<0)delay=`<span class="dep-delay early">${d}'</span>`;}
+      if(aimed&&dep.rt){const d=Math.round((expected-aimed)/60000);if(d>0)delay=`<span class="dep-delay late">+${d}'</span>`;else if(d<0)delay=`<span class="dep-delay early">${d}'</span>`;}
       const cancel=dep.cancelled?'<span style="font-size:10px;color:var(--danger);font-weight:600;margin-left:3px;">Supprimé</span>':'';
-      const row=document.createElement('div');row.className='dep-row';
+      const row=document.createElement('div'); row.className='dep-row';
       row.innerHTML=`
         <div class="dep-dest">${dep.dest||this.terminus}</div>
         <div class="dep-right">
@@ -576,28 +615,31 @@ if (isHeavyRail) {
     });
   }
 
-  async refresh() {
-    try {
+  async refresh(){
+    try{
       let deps=[],isRT=false;
       const strategy=getStrategy(this.lineInfo?.commercial_mode);
-      if (strategy==='stop-monitoring') {
-        for (const spId of this.spIds){
+
+      if(strategy==='stop-monitoring'){
+        for(const spId of this.spIds){
           const mr=toMonRef(spId);if(!mr)continue;
           try{const d=await api('stop-monitoring',{MonitoringRef:mr,MaximumStopVisits:20});const p=parseSM(d,this.terminus);if(p.length){deps=p;isRT=true;break;}}catch{}
         }
-      } else if (this.lineRef) {
-        try{const d=await api('requete-ligne',{LineRef:this.lineRef});deps=parseRL(d,this.spIds,this.terminus);isRT=true;}catch{}
+      } else if(this.lineRef){
+        try{const d=await api('estimated-timetable',{LineRef:this.lineRef});deps=parseET(d,this.spIds,this.terminus);isRT=true;}catch{}
       }
-      if (!deps.length&&this.spIds.length){
+
+      if(!deps.length&&this.spIds.length){
         try{const d=await api('v2/navitia/stop_points/'+this.spIds[0]+'/departures',{count:15});deps=parseNAV(d.departures||[],this.terminus);}catch{}
       }
+
       this.isRT=isRT;
-      const freshEl=document.getElementById('fresh-'+this.id);
-      const dotEl  =document.getElementById('dot-'+this.id);
-      if (freshEl){freshEl.className=`fresh ${isRT?'rt':'th'}`;freshEl.textContent=isRT?'⚡ Temps réel':'📅 Théorique';}
-      if (dotEl)  {dotEl.className=`dep-footer-dot ${isRT?'rt':'th'}`;}
+      const freshEl=document.getElementById(`fresh-${this.id}`);
+      const dotEl=document.getElementById(`dot-${this.id}`);
+      if(freshEl){freshEl.className=`fresh ${isRT?'rt':'th'}`;freshEl.textContent=isRT?'⚡ Temps réel':'📅 Théorique';}
+      if(dotEl){dotEl.className=`dep-footer-dot ${isRT?'rt':'th'}`;}
       this.updateDepList(deps);
-    } catch {}
+    }catch{}
   }
 
   async manualRefresh(){this.countdown=REFRESH_SEC;this.updateTimerUI();await this.refresh();}
@@ -605,34 +647,31 @@ if (isHeavyRail) {
   startTimer(){
     this.stopTimer(); this.countdown=REFRESH_SEC;
     this.timer=setInterval(()=>{
-      this.countdown--;
-      this.updateTimerUI();
-      if (this.countdown<=0){this.countdown=REFRESH_SEC;this.refresh();}
+      this.countdown--;this.updateTimerUI();
+      if(this.countdown<=0){this.countdown=REFRESH_SEC;this.refresh();}
     },1000);
   }
   stopTimer(){clearInterval(this.timer);this.timer=null;}
   updateTimerUI(){
-    const cd =document.getElementById('cd-' +this.id);
-    const bar=document.getElementById('bar-'+this.id);
-    if (cd)  cd.textContent =this.countdown+'s';
-    if (bar) bar.style.width=(this.countdown/REFRESH_SEC*100)+'%';
+    const cd=document.getElementById(`cd-${this.id}`);
+    const bar=document.getElementById(`bar-${this.id}`);
+    if(cd)cd.textContent=this.countdown+'s';
+    if(bar)bar.style.width=(this.countdown/REFRESH_SEC*100)+'%';
   }
-
   goStep(step){this.stopTimer();this.step=step;this.render();}
   reset(){
     this.stopTimer();
-    Object.assign(this,{step:'search',stopId:null,stopName:null,lineId:null,lineInfo:null,lineRef:null,spIds:[],terminus:null,_lines:null,_routes:null,_spCache:null,countdown:REFRESH_SEC,isRT:false});
+    Object.assign(this,{step:'search',stopId:null,stopName:null,lineId:null,lineInfo:null,lineRef:null,spIds:[],terminus:null,_lines:null,_routes:null,_spCache:null,_dirFilter:null,countdown:REFRESH_SEC,isRT:false});
     this.render();
   }
 }
 
-// Init
 const panels=[];
 const grid=document.getElementById('grid');
-for (let i=0;i<3;i++){
-  const el=document.createElement('div');el.className='panel';
+for(let i=0;i<3;i++){
+  const el=document.createElement('div'); el.className='panel';
   grid.appendChild(el);
-  const p=new Panel(i);p.mount(el);panels.push(p);
+  const p=new Panel(i); p.mount(el); panels.push(p);
 }
 </script>
 </body>
