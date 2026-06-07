@@ -1,790 +1,738 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Transports IDF — Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transports IDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
     :root {
-      --bg: #dee2e3;
-      --panel: #bfbfbf;
-      --panel-hover: #1c1f25;
-      --border: rgba(255,255,255,0.07);
-      --border-active: rgba(255,255,255,0.15);
-      --text: #e8e6e1;
-      --muted: #5a5c63;
-      --muted2: #3a3c42;
-      --accent: #4f8ef7;
-      --accent-dim: rgba(79,142,247,0.12);
-      --success: #34d399;
-      --warn: #fbbf24;
-      --danger: #f87171;
-      --radius: 12px;
-      --mono: 'DM Mono', monospace;
-      --sans: 'DM Sans', sans-serif;
+      --bg:          #f2f2f7;
+      --surface:     #ffffff;
+      --surface2:    #f2f2f7;
+      --border:      rgba(60,60,67,.12);
+      --border2:     rgba(60,60,67,.22);
+      --text:        #000000;
+      --text2:       #3c3c43;
+      --muted:       rgba(60,60,67,.55);
+      --accent:      #007aff;
+      --accent-bg:   rgba(0,122,255,.08);
+      --success:     #34c759;
+      --success-bg:  rgba(52,199,89,.1);
+      --warning:     #ff9500;
+      --warning-bg:  rgba(255,149,0,.1);
+      --danger:      #ff3b30;
+      --danger-bg:   rgba(255,59,48,.1);
+      --info-bg:     rgba(0,122,255,.08);
+      --sep:         rgba(60,60,67,.1);
+      --r:           16px;
+      --r-sm:        12px;
+      --r-xs:        8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #000000;
+        --surface:    #1c1c1e;
+        --surface2:   #2c2c2e;
+        --border:     rgba(255,255,255,.1);
+        --border2:    rgba(255,255,255,.2);
+        --text:       #ffffff;
+        --text2:      #ebebf5;
+        --muted:      rgba(235,235,245,.55);
+        --accent:     #0a84ff;
+        --accent-bg:  rgba(10,132,255,.12);
+        --success:    #30d158;
+        --success-bg: rgba(48,209,88,.12);
+        --warning:    #ff9f0a;
+        --warning-bg: rgba(255,159,10,.12);
+        --danger:     #ff453a;
+        --danger-bg:  rgba(255,69,58,.12);
+        --info-bg:    rgba(10,132,255,.12);
+        --sep:        rgba(255,255,255,.08);
+      }
     }
 
     body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg); color: var(--text);
       min-height: 100vh;
-      overflow-x: hidden;
     }
+
+    .app { max-width: 580px; margin: 0 auto; padding-bottom: 5rem; }
 
     /* ── Header ── */
-    .header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px; border-bottom: 1px solid var(--border);
-      background: rgba(14,15,17,0.9); backdrop-filter: blur(12px);
-      position: sticky; top: 0; z-index: 100;
-    }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .header-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; }
-    .header-logo span { color: var(--accent); }
-    .header-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
-    .header-time { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+    .app-header { padding: 2.5rem 20px 1rem; }
+    .app-header h1 { font-size: 32px; font-weight: 600; letter-spacing: -.5px; }
+    .app-header p  { font-size: 15px; color: var(--muted); margin-top: 3px; }
 
-    /* ── Grid ── */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      gap: 12px;
-      padding: 16px;
-      min-height: calc(100vh - 57px);
+    /* ── Search ── */
+    .search-wrap { padding: 0 16px 12px; position: relative; }
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border-radius: var(--r);
+      padding: 0 12px 0 14px; height: 46px;
+      border: 0.5px solid var(--border);
     }
-
-    /* ── Panel ── */
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: border-color 0.2s;
-      min-height: 280px;
+    .search-box input {
+      flex: 1; border: none; outline: none; background: transparent;
+      font-family: inherit; font-size: 16px; color: var(--text);
     }
-    .panel.configured { border-color: var(--border-active); }
-
-    .panel-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+    .search-box input::placeholder { color: var(--muted); }
+    .search-box i { color: var(--muted); font-size: 17px; flex-shrink: 0; }
+    .search-box button {
+      height: 32px; padding: 0 14px; border-radius: 99px;
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      border: none; background: var(--accent); color: #fff; cursor: pointer; flex-shrink: 0;
     }
-    .panel-number {
-      font-family: var(--mono); font-size: 10px; color: var(--muted2);
-      font-weight: 500; letter-spacing: 0.05em;
+    .ac-list {
+      position: absolute; top: calc(100% - 8px); left: 16px; right: 16px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--r-sm);
+      box-shadow: 0 8px 30px rgba(0,0,0,.12);
+      z-index: 200; overflow: hidden; max-height: 280px; overflow-y: auto;
     }
-    .panel-badge {
-      display: flex; align-items: center; gap: 6px;
-    }
-    .panel-clear-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--muted); font-size: 14px; padding: 2px 4px;
-      border-radius: 4px; line-height: 1;
-      transition: color 0.15s, background 0.15s;
-    }
-    .panel-clear-btn:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
-
-    .panel-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-    /* ── Setup screen ── */
-    .setup {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 16px; gap: 10px;
-    }
-    .setup-icon { font-size: 28px; opacity: 0.3; }
-    .setup-label { font-size: 12px; color: var(--muted); text-align: center; }
-    .setup-search {
-      width: 100%; position: relative;
-    }
-    .setup-search input {
-      width: 100%; height: 34px; padding: 0 10px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text);
-      font-family: var(--sans); font-size: 12px; outline: none;
-      transition: border-color 0.15s;
-    }
-    .setup-search input:focus { border-color: var(--accent); }
-    .ac-dropdown {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-      background: #1e2028; border: 1px solid var(--border-active);
-      border-radius: 8px; z-index: 200; overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      max-height: 180px; overflow-y: auto;
-    }
+    .ac-list:empty { display: none; }
     .ac-item {
-      padding: 8px 10px; cursor: pointer; font-size: 12px;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.1s;
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; cursor: pointer;
+      border-bottom: 0.5px solid var(--sep);
+      transition: background .1s;
     }
     .ac-item:last-child { border-bottom: none; }
-    .ac-item:hover, .ac-item.active { background: var(--accent-dim); }
-    .ac-item-name { font-weight: 500; }
-    .ac-item-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .ac-item:hover, .ac-item.active { background: var(--surface2); }
+    .ac-icon { width: 30px; height: 30px; border-radius: var(--r-xs); background: var(--accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ac-icon i { font-size: 14px; color: var(--accent); }
+    .ac-name { font-size: 14px; font-weight: 500; }
+    .ac-sub  { font-size: 12px; color: var(--muted); margin-top: 1px; }
 
-    /* ── Line picker ── */
-    .line-picker { flex: 1; overflow-y: auto; padding: 8px; }
-    .line-btn {
-      display: flex; align-items: center; gap: 8px;
-      width: 100%; padding: 7px 8px; margin-bottom: 4px;
-      background: none; border: 1px solid var(--border);
-      border-radius: 7px; cursor: pointer; color: var(--text);
-      font-family: var(--sans); font-size: 12px;
-      transition: background 0.1s, border-color 0.1s;
-      text-align: left;
+    /* ── Chips ── */
+    .chips { display: flex; gap: 7px; padding: 0 16px 14px; overflow-x: auto; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 99px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      color: var(--text2); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      transition: background .12s;
     }
-    .line-btn:hover { background: var(--panel-hover); border-color: var(--border-active); }
-    .line-btn-dest { color: var(--muted); font-size: 11px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip:hover { background: var(--surface2); }
 
-    /* ── Direction picker ── */
-    .dir-picker { flex: 1; overflow-y: auto; padding: 8px; }
-    .dir-btn {
-      display: flex; align-items: center; gap: 8px;
-      width: 100%; padding: 8px 10px; margin-bottom: 4px;
-      background: none; border: 1px solid var(--border);
-      border-radius: 7px; cursor: pointer; color: var(--text);
-      font-family: var(--sans); font-size: 12px;
-      transition: background 0.1s, border-color 0.1s; text-align: left;
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      display: none; align-items: center; gap: 4px; flex-wrap: wrap;
+      font-size: 12px; color: var(--muted); padding: 0 20px 12px;
     }
-    .dir-btn:hover { background: var(--panel-hover); border-color: var(--border-active); }
-    .dir-arrow { color: var(--muted); }
+    .breadcrumb span { cursor: pointer; font-weight: 500; color: var(--muted); }
+    .breadcrumb span:hover { color: var(--accent); }
+    .breadcrumb .sep { opacity: .4; }
 
-    /* ── Departures view ── */
-    .departures-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .dep-list { flex: 1; overflow-y: auto; }
+    /* ── Section title ── */
+    .sec-title {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em; padding: 14px 20px 6px;
+    }
 
+    /* ── Group ── */
+    .group { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r); margin: 0 16px 10px; overflow: hidden; }
+
+    /* ── Row ── */
+    .row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 14px; cursor: pointer;
+      border-bottom: 0.5px solid var(--sep); transition: background .1s;
+    }
+    .row:last-child { border-bottom: none; }
+    .row:active { background: var(--surface2); }
+    .row-icon { width: 34px; height: 34px; border-radius: var(--r-xs); background: var(--accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .row-icon i { font-size: 16px; color: var(--accent); }
+    .row-body { flex: 1; min-width: 0; }
+    .row-title { font-size: 15px; font-weight: 500; }
+    .row-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .row-chev  { color: var(--muted); font-size: 13px; opacity: .5; }
+
+    /* ── Mode header ── */
+    .mode-header {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      padding: 14px 20px 5px; display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ── Disruption badge ── */
+    .dis-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 99px; margin-left: 5px; }
+    .dis-badge.err  { background: var(--danger-bg);  color: var(--danger); }
+    .dis-badge.warn { background: var(--warning-bg); color: var(--warning); }
+    .dis-badge.info { background: var(--info-bg);    color: var(--accent); }
+
+    /* ── Disruption block ── */
+    .dis-wrap { margin: 0 16px 10px; border-radius: var(--r); overflow: hidden; border: 0.5px solid rgba(255,149,0,.3); }
+    .dis-toggle {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; background: var(--warning-bg); border: none; cursor: pointer;
+      font-family: inherit; font-size: 14px; font-weight: 500; color: var(--warning);
+    }
+    .dis-toggle i { font-size: 15px; transition: transform .2s; }
+    .dis-toggle.open i.arrow { transform: rotate(180deg); }
+    .dis-body { display: none; background: var(--surface); padding: 0 14px 12px; }
+    .dis-body.open { display: block; }
+    .dis-item { border-left: 2px solid var(--warning); padding: 10px 12px; margin-top: 10px; }
+    .dis-item.err { border-color: var(--danger); }
+    .dis-item.info { border-color: var(--accent); }
+    .dis-cause { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--warning); margin-bottom: 4px; }
+    .dis-item.err .dis-cause { color: var(--danger); }
+    .dis-item.info .dis-cause { color: var(--accent); }
+    .dis-msg { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .dis-period { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Direction tabs ── */
+    .dir-tabs { display: flex; gap: 6px; padding: 0 16px 10px; }
+    .dir-tab {
+      flex: 1; height: 40px; border-radius: var(--r-sm);
+      font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+      border: 0.5px solid var(--border); background: var(--surface); color: var(--muted);
+      transition: all .15s;
+    }
+    .dir-tab.active { background: var(--text); color: var(--surface); border-color: transparent; }
+
+    /* ── Dep header ── */
+    .dep-header { display: flex; align-items: center; gap: 12px; padding: .75rem 20px; }
+    .dep-header-body { flex: 1; }
+    .dep-header-title { font-size: 17px; font-weight: 600; letter-spacing: -.2px; }
+    .dep-header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+    .fresh { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; }
+    .fresh.rt { background: var(--success-bg); color: var(--success); }
+    .fresh.th { background: var(--warning-bg); color: var(--warning); }
+
+    /* ── Dep rows ── */
     .dep-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 14px; border-bottom: 1px solid var(--border);
-      gap: 8px;
+      padding: 13px 14px; border-bottom: 0.5px solid var(--sep); gap: 10px;
     }
     .dep-row:last-child { border-bottom: none; }
-
-    .dep-dest { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-    .dep-times { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
-
-    .dep-chip {
-      font-family: var(--mono); font-size: 13px; font-weight: 500;
-      padding: 3px 8px; border-radius: 6px;
-      background: var(--muted2); color: var(--text);
-      white-space: nowrap;
-    }
-    .dep-chip.quai { background: var(--accent-dim); color: var(--accent); }
-    .dep-chip.soon { background: rgba(52,211,153,0.12); color: var(--success); }
-    .dep-chip.cancelled { background: rgba(248,113,113,0.12); color: var(--danger); text-decoration: line-through; }
-
-    .dep-delay { font-size: 9px; font-family: var(--mono); }
-    .dep-delay.late { color: var(--danger); }
+    .dep-left  { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .dep-dest  { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dep-mode  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .dep-right { text-align: right; flex-shrink: 0; }
+    .dep-wait  { font-size: 22px; font-weight: 600; letter-spacing: -.4px; color: var(--text); }
+    .dep-wait.soon { color: var(--success); }
+    .dep-wait.quai { color: var(--accent); }
+    .dep-hour  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .dep-hour.soon { color: var(--success); }
+    .dep-hour.quai { color: var(--accent); }
+    .dep-delay { font-size: 11px; font-weight: 600; margin-left: 4px; }
+    .dep-delay.late  { color: var(--danger); }
     .dep-delay.early { color: var(--success); }
+    .dep-cancelled { font-size: 11px; font-weight: 600; color: var(--danger); margin-left: 4px; }
 
-    /* ── Refresh footer ── */
-    .panel-footer {
-      padding: 6px 14px; border-top: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    /* ── Refresh ── */
+    .refresh-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: calc(100% - 32px); margin: 6px 16px 0;
+      height: 42px; border-radius: var(--r-sm);
+      border: 0.5px solid var(--border); background: var(--surface);
+      font-family: inherit; font-size: 14px; font-weight: 500; color: var(--accent); cursor: pointer;
     }
-    .footer-rt { display: flex; align-items: center; gap: 4px; }
-    .rt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; flex-shrink: 0; }
-    .rt-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
-    .footer-progress { flex: 1; height: 2px; background: var(--muted2); border-radius: 99px; overflow: hidden; }
-    .footer-progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 1s linear; }
-    .footer-countdown { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 22px; text-align: right; }
-    .footer-now { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 11px; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; font-family: var(--sans); }
-    .footer-now:hover { color: var(--accent); }
+    .refresh-btn:active { opacity: .7; }
 
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    /* ── Empty / error ── */
+    .empty { text-align: center; padding: 3.5rem 2rem; }
+    .empty i { font-size: 44px; color: var(--muted); display: block; margin-bottom: 14px; }
+    .empty-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .empty-sub { font-size: 15px; color: var(--muted); }
+    .error-box { margin: 0 16px; padding: 13px 14px; border-radius: var(--r-sm); background: var(--danger-bg); color: var(--danger); font-size: 14px; font-weight: 500; }
 
-    /* ── Loading / empty states ── */
-    .panel-loading, .panel-empty {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px; color: var(--muted); font-size: 12px; padding: 16px;
-    }
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid var(--muted2); border-top-color: var(--accent);
-      border-radius: 50%; animation: spin 0.7s linear infinite;
-    }
+    /* ── Spinner ── */
+    .spinner { display: inline-block; width: 17px; height: 17px; border: 2px solid var(--sep); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -4px; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Step back btn ── */
-    .step-back {
-      display: flex; align-items: center; gap: 6px;
-      padding: 8px 12px; border-bottom: 1px solid var(--border);
-      font-size: 11px; color: var(--muted); cursor: pointer;
-      transition: color 0.1s, background 0.1s;
-      flex-shrink: 0;
-    }
-    .step-back:hover { color: var(--text); background: var(--panel-hover); }
-
-    /* ── Live clock ── */
-    #clock { font-family: var(--mono); font-size: 12px; }
-
-    /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); }
-    }
-    @media (max-width: 600px) {
-      .grid { grid-template-columns: 1fr; grid-template-rows: none; }
-    }
   </style>
 </head>
 <body>
+<div class="app">
 
-<div class="header">
-  <div class="header-left">
-    <div>
-      <div class="header-logo">🚇 IDF<span>live</span></div>
-      <div class="header-sub">MONITEUR TEMPS RÉEL — IDFM / PRIM</div>
-    </div>
+  <div class="app-header">
+    <h1>Transports</h1>
+    <p>Île-de-France · Temps réel</p>
   </div>
-  <div id="clock" class="header-time">--:--:--</div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <i class="ti ti-search" aria-hidden="true"></i>
+      <input type="text" id="search-input" placeholder="Station, arrêt, gare…" autocomplete="off" />
+      <button onclick="searchStops()">Chercher</button>
+    </div>
+    <div class="ac-list" id="ac-list"></div>
+  </div>
+
+  <div class="chips" id="chips">
+    <span class="chip" onclick="fillAndSearch('Les Moulineaux')">Les Moulineaux</span>
+    <span class="chip" onclick="fillAndSearch('Châtelet')">Châtelet</span>
+    <span class="chip" onclick="fillAndSearch('Nation')">Nation</span>
+    <span class="chip" onclick="fillAndSearch('Gare du Nord')">Gare du Nord</span>
+    <span class="chip" onclick="fillAndSearch('La Défense')">La Défense</span>
+    <span class="chip" onclick="fillAndSearch('Montparnasse')">Montparnasse</span>
+  </div>
+
+  <div class="breadcrumb" id="breadcrumb"></div>
+
+  <div id="view-search">
+    <div class="empty" id="search-empty">
+      <i class="ti ti-train" aria-hidden="true"></i>
+      <div class="empty-title">Recherche une station</div>
+      <div class="empty-sub">Saisis le nom d'un arrêt pour voir les prochains passages en temps réel</div>
+    </div>
+    <div id="search-results"></div>
+  </div>
+  <div id="view-lines"      style="display:none;"><div id="lines-content"></div></div>
+  <div id="view-directions" style="display:none;"><div id="directions-content"></div></div>
+  <div id="view-departures" style="display:none;"><div id="departures-content"></div></div>
+
 </div>
 
-<div class="grid" id="grid"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
 <script>
-// ── Clock ─────────────────────────────────────────────────────────────────────
-function tickClock() {
-  document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}
-tickClock(); setInterval(tickClock, 1000);
+  let state = {
+    stopAreaId:'', stopAreaName:'',
+    lineId:'', lineInfo:null, lineRef:'',
+    currentTerminus:'', currentStopPointIds:[],
+    currentStopAreaId:'', currentStopAreaName:'', currentLineName:''
+  };
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const PANEL_COUNT   = 6;
-const REFRESH_SEC   = 30;
-const PROXY         = '/api/prim';
-
-// ── API ───────────────────────────────────────────────────────────────────────
-async function api(endpoint, params = {}) {
-  const qs = new URLSearchParams({ endpoint, ...params }).toString();
-  const r = await fetch(PROXY + '?' + qs);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function textColor(hex) {
-  hex = (hex||'').replace('#','');
-  if (hex.length !== 6) return '#fff';
-  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
-  return (r*299+g*587+b*114)/1000 > 128 ? '#000' : '#fff';
-}
-
-function lineIcon(info, size=22) {
-  const code = String(info.code||info.label||'?');
-  const mode = (info.commercial_mode||'').toLowerCase();
-  const bg   = info.color ? '#'+info.color.replace('#','') : '#555';
-  const fg   = textColor(bg);
-  const cx=size/2, cy=size/2;
-  const fs = code.length<=2 ? Math.round(size*.46) : code.length===3 ? Math.round(size*.34) : Math.round(size*.27);
-  let shape, w=size;
-  if (mode.includes('métro')||mode.includes('metro')) {
-    shape = `<circle cx="${cx}" cy="${cy}" r="${cx-.5}" fill="${bg}"/>`;
-  } else if (mode.includes('rer')||mode.includes('transilien')||mode.includes('train')) {
-    const rx=Math.round(size*.22);
-    shape = `<rect x=".5" y=".5" width="${size-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
-  } else if (mode.includes('tram')) {
-    shape = `<polygon points="${cx},.5 ${size-.5},${cy} ${cx},${size-.5} .5,${cy}" fill="${bg}"/>`;
-  } else {
-    const charW=fs*.65; w=Math.max(size, Math.round(charW*code.length+size*.5));
-    const rx=Math.round(size*.22);
-    shape = `<rect x=".5" y=".5" width="${w-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
-    return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>Ligne ${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
-  }
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>Ligne ${code}</title>${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
-}
-
-function formatTime(d) { return d ? d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '--:--'; }
-
-function toLineRef(lineId, codes) {
-  if (codes && Array.isArray(codes)) {
-    const src = codes.find(c => c.type==='source');
-    if (src) { const m=src.value.match(/Line:(C[\w-]+)/); if (m) return `STIF:Line::${m[1]}:`; }
-  }
-  const m = lineId.match(/IDFM:(C[\w-]+)/);
-  return m ? `STIF:Line::${m[1]}:` : null;
-}
-
-function extractNumId(id) { const m=(id||'').match(/:(\d+)$/); return m?m[1]:null; }
-function toMonRef(spId)   { const m=(spId||'').match(/:(\d+)$/); return m?`STIF:StopPoint:Q:${m[1]}:`:null; }
-
-function normalize(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
-function looseMatch(a,b) {
-  const na=normalize(a), nb=normalize(b);
-  if (!na||!nb) return true;
-  if (na===nb||na.includes(nb)||nb.includes(na)) return true;
-  const wa=na.split(/\s+/).find(w=>w.length>=4), wb=nb.split(/\s+/).find(w=>w.length>=4);
-  return !!(wa&&wb&&wa===wb);
-}
-
-function navitiaToISO(s) {
-  if (!s) return null;
-  return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`;
-}
-
-function getSiriStrategy(mode) {
-  const m=(mode||'').toLowerCase();
-  if (m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train')) return 'stop-monitoring';
-  return 'requete-ligne';
-}
-
-// ── SIRI parsers ──────────────────────────────────────────────────────────────
-function parseSiri(data, spIds, terminus) {
-  const delivery = data?.Siri?.ServiceDelivery ?? data?.ServiceDelivery;
-  const frame = delivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
-  const journeys = frame?.EstimatedVehicleJourney || [];
-  const now = Date.now();
-  const numIds = new Set(spIds.map(extractNumId).filter(Boolean));
-  const result = [];
-  journeys.forEach(vj => {
-    (vj.EstimatedCalls?.EstimatedCall||[]).forEach(call => {
-      const spRef = call.StopPointRef?.value||'';
-      const refNum = spRef.match(/:Q:(\d+):/)?.[1] || spRef.match(/:(\d+):?$/)?.[1];
-      if (!refNum||!numIds.has(refNum)) return;
-      const dest = call.DestinationDisplay?.[0]?.value || vj.DestinationName?.[0]?.value || '';
-      if (terminus&&dest&&!looseMatch(terminus,dest)) return;
-      const expectedTime = call.ExpectedDepartureTime||call.ExpectedArrivalTime||call.AimedDepartureTime||call.AimedArrivalTime;
-      const aimedTime = call.AimedDepartureTime||call.AimedArrivalTime;
-      if (!expectedTime) return;
-      if (new Date(expectedTime).getTime() < now-60000) return;
-      result.push({ expectedTime, aimedTime, destination:dest||terminus, vehicleAtStop:call.VehicleAtStop===true, cancelled:call.DepartureStatus==='cancelled', realtime:true });
-    });
-  });
-  return result.sort((a,b)=>new Date(a.expectedTime)-new Date(b.expectedTime));
-}
-
-function parseStopMon(data, terminus) {
-  const visits = data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
-  const now = Date.now();
-  const result = [];
-  visits.forEach(v => {
-    const vj=v.MonitoredVehicleJourney||{}, call=vj.MonitoredCall||{};
-    const dest = call.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||vj.DirectionName?.[0]?.value||'';
-    if (terminus&&dest&&!looseMatch(terminus,dest)) return;
-    const expectedTime = call.ExpectedDepartureTime||call.AimedDepartureTime||call.ExpectedArrivalTime||call.AimedArrivalTime;
-    const aimedTime = call.AimedDepartureTime||call.AimedArrivalTime;
-    if (!expectedTime) return;
-    if (new Date(expectedTime).getTime() < now-60000) return;
-    result.push({ expectedTime, aimedTime, destination:dest||terminus, vehicleAtStop:call.VehicleAtStop===true, cancelled:call.DepartureStatus==='cancelled', realtime:true });
-  });
-  return result.sort((a,b)=>new Date(a.expectedTime)-new Date(b.expectedTime));
-}
-
-function parseNavitia(deps, terminus) {
-  return deps.map(dep => {
-    const sdt=dep.stop_date_time||{}, info=dep.display_informations||{};
-    const dest=info.direction||info.headsign||terminus;
-    const expectedTime=navitiaToISO(sdt.departure_date_time||sdt.arrival_date_time);
-    return {expectedTime,aimedTime:null,destination:dest,vehicleAtStop:false,cancelled:false,realtime:false};
-  }).filter(d=>d.expectedTime&&new Date(d.expectedTime).getTime()>=Date.now()-60000);
-}
-
-// ── Panel class ───────────────────────────────────────────────────────────────
-class Panel {
-  constructor(id) {
-    this.id        = id;
-    this.step      = 'search'; // search | lines | directions | departures
-    this.stopAreaId   = null;
-    this.stopAreaName = null;
-    this.lineId    = null;
-    this.lineInfo  = null;
-    this.lineRef   = null;
-    this.spIds     = [];
-    this.terminus  = null;
-    this.departures = [];
-    this.isRT      = false;
-    this.countdown = REFRESH_SEC;
-    this.timer     = null;
-    this.acTimer   = null;
-    this.acResults = [];
-    this.acIndex   = -1;
-    this.el        = null;
+  async function callProxy(endpoint, params={}) {
+    const qs = new URLSearchParams({ endpoint, ...params }).toString();
+    const r = await fetch('/api/prim?' + qs);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
   }
 
-  mount(el) {
-    this.el = el;
-    this.render();
+  function showView(name) {
+    ['search','lines','directions','departures'].forEach(v =>
+      document.getElementById('view-'+v).style.display = v===name ? 'block' : 'none'
+    );
   }
 
-  render() {
-    if (!this.el) return;
-    const el = this.el;
-    el.className = 'panel' + (this.step === 'departures' ? ' configured' : '');
-
-    const num = `<div class="panel-number">PANNEAU ${String(this.id+1).padStart(2,'0')}</div>`;
-    const clearBtn = this.step !== 'search'
-      ? `<button class="panel-clear-btn" title="Réinitialiser" data-action="clear">✕</button>`
-      : '';
-    const badge = this.lineInfo
-      ? `<div style="display:flex;align-items:center;gap:6px;">${lineIcon(this.lineInfo,18)}</div>`
-      : '';
-
-    el.innerHTML = `
-      <div class="panel-header">
-        ${num}
-        <div class="panel-badge">${badge}${clearBtn}</div>
-      </div>
-      <div class="panel-body" id="panel-body-${this.id}"></div>
-    `;
-
-    el.querySelector('[data-action="clear"]')?.addEventListener('click', () => this.reset());
-
-    this.renderBody();
+  function updateBreadcrumb(items) {
+    const bc = document.getElementById('breadcrumb');
+    if (!items.length) { bc.style.display='none'; return; }
+    bc.style.display='flex';
+    bc.innerHTML = items.map((it,i) =>
+      i < items.length-1
+        ? `<span onclick="${it.fn}">${it.label}</span><span class="sep">›</span>`
+        : `<strong style="color:var(--text2)">${it.label}</strong>`
+    ).join('');
   }
 
-  renderBody() {
-    const body = document.getElementById(`panel-body-${this.id}`);
-    if (!body) return;
-    body.innerHTML = '';
+  function formatTime(d) { return d ? d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—'; }
 
-    if (this.step === 'search')      this.renderSearch(body);
-    else if (this.step === 'lines')  this.renderLines(body);
-    else if (this.step === 'directions') this.renderDirections(body);
-    else if (this.step === 'departures') this.renderDepartures(body);
+  function textColor(hex) {
+    hex=(hex||'').replace('#',''); if(hex.length!==6) return '#fff';
+    const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+    return (r*299+g*587+b*114)/1000>128?'#000':'#fff';
   }
 
-  // ── Step 1: Search ──────────────────────────────────────────────────────────
-  renderSearch(body) {
-    body.innerHTML = `
-      <div class="setup">
-        <div class="setup-icon">📍</div>
-        <div class="setup-label">Chercher un arrêt</div>
-        <div class="setup-search">
-          <input type="text" placeholder="Ex: Les Moulineaux…" autocomplete="off" id="search-${this.id}"/>
-          <div class="ac-dropdown" id="ac-${this.id}" style="display:none;"></div>
-        </div>
-      </div>
-    `;
-    const input = document.getElementById(`search-${this.id}`);
-    const ac    = document.getElementById(`ac-${this.id}`);
-
-    input.addEventListener('input', () => {
-      clearTimeout(this.acTimer);
-      const q = input.value.trim();
-      if (q.length < 2) { ac.style.display='none'; return; }
-      ac.style.display='block';
-      ac.innerHTML='<div class="ac-item"><div class="spinner" style="margin:0 auto;"></div></div>';
-      this.acTimer = setTimeout(async () => {
-        try {
-          const data = await api('v2/navitia/places', { q, count: 8 });
-          this.acResults = (data.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
-          this.acIndex = -1;
-          if (!this.acResults.length) { ac.style.display='none'; return; }
-          ac.innerHTML = this.acResults.map((p,i) => {
-            const s = p.stop_area||p.stop_point;
-            const modes = (s.physical_modes||[]).map(m=>m.name).join(', ');
-            return `<div class="ac-item" data-i="${i}">
-              <div class="ac-item-name">${s.name}</div>
-              ${modes?`<div class="ac-item-sub">${modes}</div>`:''}
-            </div>`;
-          }).join('');
-          ac.querySelectorAll('.ac-item').forEach(item => {
-            const i = +item.dataset.i;
-            item.addEventListener('mousedown', e => { e.preventDefault(); this.selectStop(this.acResults[i]); });
-          });
-        } catch { ac.style.display='none'; }
-      }, 280);
-    });
-
-    input.addEventListener('keydown', e => {
-      const items = ac.querySelectorAll('.ac-item');
-      if (e.key==='ArrowDown') { e.preventDefault(); this.acIndex=Math.min(this.acIndex+1,items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===this.acIndex)); }
-      if (e.key==='ArrowUp')   { e.preventDefault(); this.acIndex=Math.max(this.acIndex-1,0); items.forEach((el,i)=>el.classList.toggle('active',i===this.acIndex)); }
-      if (e.key==='Enter' && this.acIndex>=0 && this.acResults[this.acIndex]) { this.selectStop(this.acResults[this.acIndex]); }
-      if (e.key==='Escape') { ac.style.display='none'; }
-    });
-
-    document.addEventListener('click', e => { if (!e.target.closest(`#ac-${this.id}`)&&!e.target.closest(`#search-${this.id}`)) ac.style.display='none'; }, {once:false});
-  }
-
-  async selectStop(place) {
-    const s = place.stop_area||place.stop_point;
-    this.stopAreaId   = s.id;
-    this.stopAreaName = s.name;
-    this.step = 'lines';
-    this.render();
-    await this.loadLines();
-  }
-
-  // ── Step 2: Lines ───────────────────────────────────────────────────────────
-  async loadLines() {
-    const body = document.getElementById(`panel-body-${this.id}`);
-    if (!body) return;
-    body.innerHTML = `
-      <div class="step-back" id="back-search-${this.id}">‹ ${this.stopAreaName}</div>
-      <div class="panel-loading" id="lines-loading-${this.id}"><div class="spinner"></div><span>Chargement…</span></div>
-    `;
-    document.getElementById(`back-search-${this.id}`).onclick = () => this.goTo('search');
-
-    try {
-      const data = await api('v2/navitia/stop_areas/'+this.stopAreaId+'/lines', {count:40});
-      const lines = data.lines||[];
-      if (!lines.length) { document.getElementById(`lines-loading-${this.id}`).innerHTML='<div class="panel-empty">Aucune ligne trouvée.</div>'; return; }
-
-      const modeOrder = {'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3};
-      const getRank = l => { const mode=(l.commercial_modes?.[0]?.name||'').toLowerCase(); const r=Object.entries(modeOrder).find(([k])=>mode.includes(k)); return r?r[1]:4; };
-      lines.sort((a,b)=>{ const dr=getRank(a)-getRank(b); return dr||String(a.code||'').localeCompare(String(b.code||''),undefined,{numeric:true}); });
-
-      this.renderLines(body, lines);
-    } catch(e) {
-      document.getElementById(`lines-loading-${this.id}`).innerHTML=`<div style="font-size:11px;color:var(--danger);padding:12px;">Erreur : ${e.message}</div>`;
-    }
-  }
-
-  renderLines(body, lines) {
-    const loading = document.getElementById(`lines-loading-${this.id}`);
-    if (!lines) { if (loading) loading.innerHTML=''; return; }
-    if (loading) loading.remove();
-
-    const picker = document.createElement('div');
-    picker.className = 'line-picker';
-    lines.forEach(l => {
-      const info = {code:l.code||l.name, color:l.color, commercial_mode:l.commercial_modes?.[0]?.name||'', codes:l.codes||[]};
-      const termini = [...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,2).join(' · ');
-      const btn = document.createElement('button');
-      btn.className = 'line-btn';
-      btn.innerHTML = `${lineIcon(info,20)}<span>${l.name||l.code}</span><span class="line-btn-dest">${termini}</span>`;
-      btn.onclick = () => {
-        this.lineId   = l.id;
-        this.lineInfo = info;
-        this.lineRef  = toLineRef(l.id, l.codes||[]);
-        this.step     = 'directions';
-        this.render();
-        this.loadDirections();
-      };
-      picker.appendChild(btn);
-    });
-    body.appendChild(picker);
-  }
-
-  // ── Step 3: Directions ──────────────────────────────────────────────────────
-  async loadDirections() {
-    const body = document.getElementById(`panel-body-${this.id}`);
-    if (!body) return;
-    body.innerHTML = `
-      <div class="step-back" id="back-lines-${this.id}">‹ Lignes</div>
-      <div class="panel-loading" id="dir-loading-${this.id}"><div class="spinner"></div><span>Chargement…</span></div>
-    `;
-    document.getElementById(`back-lines-${this.id}`).onclick = () => { this.step='lines'; this.render(); this.loadLines(); };
-
-    try {
-      const [routesData, spData] = await Promise.all([
-        api('v2/navitia/lines/'+this.lineId+'/routes',{count:10}),
-        api('v2/navitia/stop_areas/'+this.stopAreaId+'/lines/'+this.lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}))
-      ]);
-      let stopPoints = spData.stop_points||[];
-      if (!stopPoints.length) {
-        const fb = await api('v2/navitia/stop_areas/'+this.stopAreaId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));
-        stopPoints = fb.stop_points||[];
-      }
-      this._stopPoints = stopPoints;
-      const routes = routesData.routes||[];
-
-      const loading = document.getElementById(`dir-loading-${this.id}`);
-      if (loading) loading.remove();
-
-      const picker = document.createElement('div');
-      picker.className = 'dir-picker';
-      routes.forEach(route => {
-        const terminus = route.direction?.stop_area?.name||route.name||'?';
-        const routeSpIds = stopPoints.filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id)).map(sp=>sp.id);
-        const spIds = routeSpIds.length ? routeSpIds : stopPoints.map(sp=>sp.id);
-        const arrow = route.direction_type==='inbound' ? '←' : '→';
-        const btn = document.createElement('button');
-        btn.className = 'dir-btn';
-        btn.innerHTML = `<span class="dir-arrow">${arrow}</span><span>${terminus}</span>`;
-        btn.onclick = () => {
-          this.terminus = terminus;
-          this.spIds    = spIds;
-          this.step     = 'departures';
-          this.render();
-          this.refreshDepartures();
-          this.startTimer();
-        };
-        picker.appendChild(btn);
-      });
-
-      const body2 = document.getElementById(`panel-body-${this.id}`);
-      if (body2) body2.appendChild(picker);
-    } catch(e) {
-      const loading = document.getElementById(`dir-loading-${this.id}`);
-      if (loading) loading.innerHTML=`<div style="font-size:11px;color:var(--danger);padding:12px;">Erreur : ${e.message}</div>`;
-    }
-  }
-
-  // ── Step 4: Departures ──────────────────────────────────────────────────────
-  renderDepartures(body) {
-    body.innerHTML = `
-      <div class="departures-view">
-        <div class="dep-list" id="dep-list-${this.id}">
-          <div class="panel-loading"><div class="spinner"></div></div>
-        </div>
-        <div class="panel-footer">
-          <div class="footer-rt">
-            <div class="rt-dot"></div>
-            <span class="rt-label" id="rt-label-${this.id}">temps réel</span>
-          </div>
-          <div class="footer-progress">
-            <div class="footer-progress-bar" id="fp-bar-${this.id}" style="width:100%"></div>
-          </div>
-          <span class="footer-countdown" id="fp-cd-${this.id}">${this.countdown}s</span>
-          <button class="footer-now" onclick="panels[${this.id}].manualRefresh()">↻</button>
-        </div>
-      </div>
-    `;
-  }
-
-  updateDepList() {
-    const list = document.getElementById(`dep-list-${this.id}`);
-    if (!list) return;
-
-    if (!this.departures.length) {
-      list.innerHTML = '<div class="panel-empty"><span style="font-size:22px;">🕐</span><span>Aucun passage imminent</span></div>';
-      return;
-    }
-
-    const now = Date.now();
-    list.innerHTML = '';
-    this.departures.slice(0, 6).forEach(dep => {
-      const expected = new Date(dep.expectedTime);
-      const aimed    = dep.aimedTime ? new Date(dep.aimedTime) : null;
-      const waitMin  = Math.round((expected - now) / 60000);
-      const timeStr  = formatTime(expected);
-
-      let chipClass = '';
-      let label = timeStr;
-      if (dep.vehicleAtStop || waitMin <= 0) { chipClass='quai'; label='À quai'; }
-      else if (waitMin <= 1) { chipClass='soon'; label='1 min'; }
-      else if (waitMin <= 4) { chipClass='soon'; label=waitMin+' min'; }
-
-      if (dep.cancelled) chipClass='cancelled';
-
-      let delay = '';
-      if (aimed && dep.realtime) {
-        const d = Math.round((expected-aimed)/60000);
-        if (d>0) delay=`<span class="dep-delay late">+${d}'</span>`;
-        else if (d<0) delay=`<span class="dep-delay early">${d}'</span>`;
-      }
-
-      const row = document.createElement('div');
-      row.className = 'dep-row';
-      row.innerHTML = `
-        <div class="dep-dest">${dep.destination||this.terminus}</div>
-        <div class="dep-times">
-          ${delay}
-          <span class="dep-chip ${chipClass}">${label}</span>
-        </div>
-      `;
-      list.appendChild(row);
-    });
-  }
-
-  async refreshDepartures() {
-    const strategy = getSiriStrategy(this.lineInfo?.commercial_mode);
-    let deps = [], isRT = false;
-
-    if (strategy === 'stop-monitoring') {
-      for (const spId of this.spIds) {
-        const monRef = toMonRef(spId);
-        if (!monRef) continue;
-        try {
-          const data = await api('stop-monitoring', {MonitoringRef:monRef, MaximumStopVisits:20});
-          const parsed = parseStopMon(data, this.terminus);
-          if (parsed.length) { deps=parsed; isRT=true; break; }
-        } catch(e) { /* ignore */ }
-      }
+  function lineIcon(info, size=32) {
+    const code=String(info.code||info.label||'?');
+    const mode=(info.commercial_mode||'').toLowerCase();
+    const bg=info.color?'#'+info.color.replace('#',''):'#888';
+    const fg=textColor(info.color||'888888');
+    const cx=size/2,cy=size/2;
+    const fs=code.length<=2?Math.round(size*.44):code.length===3?Math.round(size*.32):Math.round(size*.26);
+    const r=Math.round(size*.2);
+    let shape,w=size;
+    if (mode.includes('métro')||mode.includes('metro')) {
+      shape=`<circle cx="${cx}" cy="${cy}" r="${cx-1}" fill="${bg}"/>`;
+    } else if (mode.includes('rer')||mode.includes('transilien')||mode.includes('train')) {
+      shape=`<rect x="1" y="1" width="${size-2}" height="${size-2}" rx="${r}" fill="${bg}"/>`;
+    } else if (mode.includes('tram')) {
+      shape=`<polygon points="${cx},1 ${size-1},${cy} ${cx},${size-1} 1,${cy}" fill="${bg}"/>`;
     } else {
-      if (this.lineRef) {
-        try {
-          const data = await api('requete-ligne', {LineRef:this.lineRef});
-          deps = parseSiri(data, this.spIds, this.terminus);
-          isRT = true;
-        } catch(e) { /* ignore */ }
-      }
+      const cw=fs*.65; w=Math.max(size,Math.round(cw*code.length+size*.5));
+      shape=`<rect x="1" y="1" width="${w-2}" height="${size-2}" rx="${r}" fill="${bg}"/>`;
+      return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>Ligne ${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
     }
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>Ligne ${code}</title>${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
+  }
 
-    if (!deps.length && this.spIds.length) {
+  const modeOrder={'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3};
+  function getModeRank(l) {
+    const m=(l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'').toLowerCase();
+    const e=Object.entries(modeOrder).find(([k])=>m.includes(k));
+    return e?e[1]:4;
+  }
+  function getModeIcon(name) {
+    const m=(name||'').toLowerCase();
+    if (m.includes('rer')||m.includes('transilien')||m.includes('train')) return 'ti-train';
+    if (m.includes('métro')||m.includes('metro')) return 'ti-building-community';
+    if (m.includes('tram')) return 'ti-tir';
+    return 'ti-bus';
+  }
+
+  function toLineRef(lineId,codes) {
+    if (codes) { const s=codes.find(c=>c.type==='source'); if (s) { const m=s.value.match(/Line:(C[\w-]+)/); if (m) return `STIF:Line::${m[1]}:`; } }
+    const m=lineId.match(/IDFM:(C[\w-]+)/); return m?`STIF:Line::${m[1]}:`:null;
+  }
+  function extractNumId(id) { const m=(id||'').match(/:(\d+)$/); return m?m[1]:null; }
+  function toMonRef(spId)   { const m=(spId||'').match(/:(\d+)$/); return m?`STIF:StopPoint:Q:${m[1]}:`:null; }
+  function norm(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+  function lMatch(a,b) {
+    const na=norm(a),nb=norm(b);
+    if (na===nb||na.includes(nb)||nb.includes(na)) return true;
+    const wa=na.split(/\s+/).find(w=>w.length>=4), wb=nb.split(/\s+/).find(w=>w.length>=4);
+    return wa&&wb&&wa===wb;
+  }
+  function n2iso(s) { if(!s)return null; return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`; }
+
+  function fillAndSearch(name) { document.getElementById('search-input').value=name; closeAC(); searchStops(); }
+
+  /* ── Perturbations ─────────────────────────────────────────────────────── */
+  function disLevel(cause,effect) {
+    const c=(cause||'').toLowerCase(),e=(effect||'').toLowerCase();
+    if (e.includes('no_service')||e.includes('significant')||c.includes('accident')||c.includes('travaux')) return 'err';
+    if (e.includes('reduced')||e.includes('detour')||c.includes('perturbation')||c.includes('incident')) return 'warn';
+    return 'info';
+  }
+  function fmtPeriod(p) {
+    if (!p||!p.length) return '';
+    const from=p[0].begin?new Date(p[0].begin).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    const to=p[0].end?new Date(p[0].end).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    return from&&to?`Du ${from} au ${to}`:from?`Depuis le ${from}`:'';
+  }
+  async function fetchDis(lineId) {
+    try { const d=await callProxy('v2/navitia/lines/'+lineId+'/disruptions',{count:20}); return d.disruptions||[]; } catch { return []; }
+  }
+  function disBadge(list) {
+    if (!list.length) return '';
+    const e=list.filter(d=>disLevel(d.cause,d.disruption_effect||d.effect)==='err').length;
+    const w=list.filter(d=>disLevel(d.cause,d.disruption_effect||d.effect)==='warn').length;
+    if (e) return `<span class="dis-badge err">${e} perturbation${e>1?'s':''}</span>`;
+    if (w) return `<span class="dis-badge warn">${w} avertissement${w>1?'s':''}</span>`;
+    return `<span class="dis-badge info">${list.length} info</span>`;
+  }
+  function renderDisBlock(list, el) {
+    if (!list.length) return;
+    const e=list.filter(d=>disLevel(d.cause,d.disruption_effect||d.effect)==='err').length;
+    const w=list.filter(d=>disLevel(d.cause,d.disruption_effect||d.effect)==='warn').length;
+    const icon=e?'ti-alert-octagon':w?'ti-alert-triangle':'ti-info-circle';
+    const label=e?'perturbation':w?'avertissement':'information';
+    const wrap=document.createElement('div'); wrap.className='dis-wrap';
+    const toggle=document.createElement('button'); toggle.className='dis-toggle';
+    toggle.innerHTML=`<span style="display:flex;align-items:center;gap:8px;"><i class="ti ${icon}" aria-hidden="true"></i>${list.length} ${label}${list.length>1?'s':''} en cours</span><i class="ti ti-chevron-down arrow" aria-hidden="true"></i>`;
+    const body=document.createElement('div'); body.className='dis-body';
+    list.forEach(d=>{
+      const lv=disLevel(d.cause,d.disruption_effect||d.effect);
+      const msgs=(d.messages||[]).map(m=>m.text).filter(Boolean);
+      const msg=msgs.join(' ')||d.title||d.header||'';
+      const period=fmtPeriod(d.application_periods||d.periods);
+      const div=document.createElement('div'); div.className=`dis-item ${lv}`;
+      div.innerHTML=`<div class="dis-cause">${d.cause||d.category||'Information'}</div>${msg?`<div class="dis-msg">${msg}</div>`:''}${period?`<div class="dis-period"><i class="ti ti-clock" aria-hidden="true" style="font-size:11px;vertical-align:-1px;margin-right:3px;"></i>${period}</div>`:''}`;
+      body.appendChild(div);
+    });
+    toggle.onclick=()=>{toggle.classList.toggle('open');body.classList.toggle('open');};
+    wrap.appendChild(toggle); wrap.appendChild(body); el.appendChild(wrap);
+  }
+
+  /* ── Autocomplete ──────────────────────────────────────────────────────── */
+  let acTimer=null,acIdx=-1,acRes=[];
+  const inp=document.getElementById('search-input'), acList=document.getElementById('ac-list');
+  inp.addEventListener('input',()=>{
+    clearTimeout(acTimer); const q=inp.value.trim();
+    if (q.length<2){closeAC();return;} acTimer=setTimeout(()=>fetchAC(q),250);
+  });
+  inp.addEventListener('keydown',e=>{
+    if (e.key==='Enter'){if(acIdx>=0&&acRes[acIdx]){selAC(acRes[acIdx]);return;}closeAC();searchStops();return;}
+    if (e.key==='ArrowDown'){e.preventDefault();moveAC(1);return;}
+    if (e.key==='ArrowUp'){e.preventDefault();moveAC(-1);return;}
+    if (e.key==='Escape'){closeAC();return;}
+  });
+  document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeAC();});
+  async function fetchAC(q) {
+    acList.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);"><span class="spinner"></span></div>';
+    try {
+      const d=await callProxy('v2/navitia/places',{q,count:8});
+      acRes=(d.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
+      renderAC();
+    } catch {closeAC();}
+  }
+  function renderAC() {
+    acIdx=-1; if (!acRes.length){acList.innerHTML='';return;}
+    acList.innerHTML=acRes.map((p,i)=>{
+      const s=p.stop_area||p.stop_point;
+      const modes=(s.physical_modes||[]).map(m=>m.name).join(' · ');
+      return `<div class="ac-item" data-i="${i}"><div class="ac-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div><div><div class="ac-name">${s.name}</div>${modes?`<div class="ac-sub">${modes}</div>`:''}</div></div>`;
+    }).join('');
+    acList.querySelectorAll('.ac-item').forEach(el=>{
+      const i=+el.dataset.i;
+      el.addEventListener('mousedown',e=>{e.preventDefault();selAC(acRes[i]);});
+    });
+  }
+  function moveAC(dir) {
+    const items=acList.querySelectorAll('.ac-item'); if(!items.length)return;
+    items[acIdx]?.classList.remove('active');
+    acIdx=Math.max(0,Math.min(acRes.length-1,acIdx+dir));
+    items[acIdx]?.classList.add('active'); items[acIdx]?.scrollIntoView({block:'nearest'});
+  }
+  function selAC(p) { const s=p.stop_area||p.stop_point; inp.value=s.name; closeAC(); loadLines(s.id,s.name); }
+  function closeAC() { acList.innerHTML=''; acIdx=-1; acRes=[]; }
+
+  /* ── Vue 1 : Recherche ─────────────────────────────────────────────────── */
+  async function searchStops() {
+    const q=inp.value.trim(); if(!q)return;
+    const btn=document.querySelector('.search-box button');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+    showView('search'); updateBreadcrumb([]);
+    const empty=document.getElementById('search-empty'), results=document.getElementById('search-results');
+    empty.innerHTML='<i class="ti ti-search" aria-hidden="true"></i><div class="empty-title">Recherche…</div>'; empty.style.display='block'; results.innerHTML='';
+    try {
+      const d=await callProxy('v2/navitia/places',{q,count:10});
+      const places=(d.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
+      empty.style.display='none';
+      if (!places.length){empty.innerHTML=`<i class="ti ti-mood-sad" aria-hidden="true"></i><div class="empty-title">Aucun résultat</div><div class="empty-sub">Aucun arrêt trouvé pour « ${q} »</div>`;empty.style.display='block';btn.disabled=false;btn.textContent='Chercher';return;}
+      const sec=document.createElement('div'); sec.className='sec-title'; sec.textContent='Arrêts correspondants'; results.appendChild(sec);
+      const g=document.createElement('div'); g.className='group';
+      places.forEach(p=>{
+        const s=p.stop_area||p.stop_point; if(!s)return;
+        const modes=(s.physical_modes||[]).map(m=>m.name).join(' · ');
+        const row=document.createElement('div'); row.className='row';
+        row.innerHTML=`<div class="row-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div><div class="row-body"><div class="row-title">${s.name}</div>${modes?`<div class="row-sub">${modes}</div>`:''}</div><i class="ti ti-chevron-right row-chev" aria-hidden="true"></i>`;
+        row.onclick=()=>loadLines(s.id,s.name); g.appendChild(row);
+      });
+      results.appendChild(g);
+    } catch(e){empty.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;empty.style.display='block';}
+    btn.disabled=false; btn.textContent='Chercher';
+  }
+
+  /* ── Vue 2 : Lignes ────────────────────────────────────────────────────── */
+  async function loadLines(stopAreaId, stopAreaName) {
+    state.stopAreaId=stopAreaId; state.stopAreaName=stopAreaName;
+    showView('lines');
+    updateBreadcrumb([{label:inp.value,fn:'backToSearch()'},{label:stopAreaName}]);
+    const el=document.getElementById('lines-content');
+    el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement…</div>';
+    try {
+      const [ld,dd]=await Promise.all([
+        callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines',{count:40}),
+        callProxy('v2/navitia/stop_areas/'+stopAreaId+'/disruptions',{count:30}).catch(()=>({disruptions:[]}))
+      ]);
+      const lines=ld.lines||[], disByLine={};
+      (dd.disruptions||[]).forEach(d=>{
+        (d.impacted_objects||[]).forEach(obj=>{
+          const lid=obj.pt_object?.line?.id||obj.id;
+          if (lid){if(!disByLine[lid])disByLine[lid]=[];disByLine[lid].push(d);}
+        });
+      });
+      el.innerHTML='';
+      if (!lines.length){el.innerHTML='<div class="empty"><i class="ti ti-mood-sad" aria-hidden="true"></i><div class="empty-title">Aucune ligne</div></div>';return;}
+      lines.sort((a,b)=>{const ra=getModeRank(a),rb=getModeRank(b);if(ra!==rb)return ra-rb;return(a.code||'').localeCompare(b.code||'',undefined,{numeric:true});});
+      const byMode=new Map();
+      lines.forEach(l=>{const m=l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'Autre';if(!byMode.has(m))byMode.set(m,[]);byMode.get(m).push(l);});
+      byMode.forEach((ls,modeName)=>{
+        const mh=document.createElement('div'); mh.className='mode-header';
+        mh.innerHTML=`<i class="ti ${getModeIcon(modeName)}" aria-hidden="true"></i>${modeName}`;
+        el.appendChild(mh);
+        const g=document.createElement('div'); g.className='group';
+        ls.forEach(l=>{
+          const info={code:l.code||l.name,color:l.color,commercial_mode:l.commercial_modes?.[0]?.name||'',codes:l.codes||[]};
+          const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,2).join(' · ');
+          const badge=disBadge(disByLine[l.id]||[]);
+          const row=document.createElement('div'); row.className='row';
+          row.innerHTML=`${lineIcon(info,34)}<div class="row-body"><div class="row-title" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${l.name||l.code}${badge}</div>${termini?`<div class="row-sub">${termini}</div>`:''}</div><i class="ti ti-chevron-right row-chev" aria-hidden="true"></i>`;
+          row.onclick=()=>loadDirections(stopAreaId,stopAreaName,l.id,info,l.name||l.code);
+          g.appendChild(row);
+        });
+        el.appendChild(g);
+      });
+    } catch(e){el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;}
+  }
+
+  /* ── Vue 3 : Directions ────────────────────────────────────────────────── */
+  let _dc=null;
+  async function loadDirections(stopAreaId,stopAreaName,lineId,lineInfo,lineName,activeFilter) {
+    state.lineId=lineId; state.lineInfo=lineInfo; state.lineRef=toLineRef(lineId,lineInfo.codes);
+    showView('directions');
+    updateBreadcrumb([
+      {label:inp.value,fn:'backToSearch()'},
+      {label:stopAreaName,fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}')` },
+      {label:lineName}
+    ]);
+    const el=document.getElementById('directions-content');
+    const ck=stopAreaId+'|'+lineId;
+    if (!_dc||_dc.key!==ck) {
+      el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement…</div>';
       try {
-        const data = await api('v2/navitia/stop_points/'+this.spIds[0]+'/departures',{count:15});
-        deps = parseNavitia(data.departures||[], this.terminus);
-        isRT = false;
-      } catch(e) { /* ignore */ }
+        const [rd,spd,disruptions]=await Promise.all([
+          callProxy('v2/navitia/lines/'+lineId+'/routes',{count:10}),
+          callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]})),
+          fetchDis(lineId)
+        ]);
+        let sp=spd.stop_points||[];
+        if (!sp.length){const fb=await callProxy('v2/navitia/stop_areas/'+stopAreaId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));sp=fb.stop_points||[];}
+        _dc={key:ck,routes:rd.routes||[],stopPoints:sp,disruptions};
+      } catch(e){el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;return;}
     }
-
-    this.departures = deps;
-    this.isRT = isRT;
-
-    const rtLabel = document.getElementById(`rt-label-${this.id}`);
-    const rtDot   = this.el.querySelector('.rt-dot');
-    if (rtLabel) rtLabel.textContent = isRT ? 'temps réel' : 'théorique';
-    if (rtDot)   rtDot.style.background = isRT ? 'var(--success)' : 'var(--warn)';
-
-    this.updateDepList();
+    const {routes,stopPoints,disruptions}=_dc;
+    const allSp=stopPoints.map(s=>s.id);
+    if (!routes.length){el.innerHTML='<div class="empty"><i class="ti ti-mood-sad" aria-hidden="true"></i><div class="empty-title">Aucune direction</div></div>';return;}
+    const ob=routes.filter(r=>r.direction_type==='outbound'),ib=routes.filter(r=>r.direction_type==='inbound');
+    const hasF=ob.length>0&&ib.length>0;
+    const filter=activeFilter||(hasF?'outbound':null);
+    el.innerHTML='';
+    if (disruptions.length) renderDisBlock(disruptions,el);
+    const sec=document.createElement('div'); sec.className='sec-title';
+    sec.innerHTML=`${lineIcon(lineInfo,18)}&nbsp; ${lineName} — Direction`;
+    el.appendChild(sec);
+    if (hasF) {
+      const tabs=document.createElement('div'); tabs.className='dir-tabs';
+      [{dir:'outbound',lbl:'→ Aller'},{dir:'inbound',lbl:'← Retour'}].forEach(({dir,lbl})=>{
+        const active=filter===dir;
+        const btn=document.createElement('button');
+        btn.className='dir-tab'+(active?' active':'');
+        btn.textContent=lbl;
+        btn.onclick=()=>loadDirections(stopAreaId,stopAreaName,lineId,lineInfo,lineName,dir);
+        tabs.appendChild(btn);
+      });
+      el.appendChild(tabs);
+    }
+    const visible=hasF?routes.filter(r=>r.direction_type===filter):routes;
+    if (!visible.length){el.innerHTML+='<div class="empty"><div class="empty-title">Aucune destination</div></div>';return;}
+    const g=document.createElement('div'); g.className='group';
+    visible.forEach(route=>{
+      const terminus=route.direction?.stop_area?.name||route.name||'?';
+      const rSp=stopPoints.filter(s=>!s.routes?.length||s.routes.some(r=>r.id===route.id)).map(s=>s.id);
+      const spIds=rSp.length?rSp:allSp;
+      const arrow=filter==='inbound'?'←':'→';
+      const row=document.createElement('div'); row.className='row';
+      row.innerHTML=`${lineIcon(lineInfo,36)}<div class="row-body"><div class="row-title">${arrow} ${terminus}</div></div><i class="ti ti-chevron-right row-chev" aria-hidden="true"></i>`;
+      row.onclick=()=>loadDepartures(terminus,spIds,stopAreaId,stopAreaName,lineName);
+      g.appendChild(row);
+    });
+    el.appendChild(g);
   }
 
-  // ── Timer ───────────────────────────────────────────────────────────────────
-  startTimer() {
-    this.stopTimer();
-    this.countdown = REFRESH_SEC;
-    this.timer = setInterval(() => {
-      this.countdown--;
-      const cd  = document.getElementById(`fp-cd-${this.id}`);
-      const bar = document.getElementById(`fp-bar-${this.id}`);
-      if (cd)  cd.textContent  = this.countdown + 's';
-      if (bar) bar.style.width = (this.countdown / REFRESH_SEC * 100) + '%';
-      if (this.countdown <= 0) {
-        this.countdown = REFRESH_SEC;
-        this.refreshDepartures();
+  /* ── Vue 4 : Horaires ──────────────────────────────────────────────────── */
+  async function loadDepartures(terminus,spIds,stopAreaId,stopAreaName,lineName) {
+    showView('departures');
+    updateBreadcrumb([
+      {label:inp.value,fn:'backToSearch()'},
+      {label:stopAreaName,fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}')` },
+      {label:lineName,fn:`loadDirections('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}','${state.lineId}',${JSON.stringify(state.lineInfo)},'${lineName.replace(/'/g,"\\'")}')` },
+      {label:'→ '+terminus}
+    ]);
+    Object.assign(state,{currentTerminus:terminus,currentStopPointIds:spIds,currentStopAreaId:stopAreaId,currentStopAreaName:stopAreaName,currentLineName:lineName});
+    await refreshDepartures();
+  }
+
+  function getStrategy(li) {
+    const m=(li.commercial_mode||'').toLowerCase();
+    return (m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'stop-monitoring':'estimated-timetable';
+  }
+
+  async function refreshDepartures() {
+    const el=document.getElementById('departures-content'); el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires…</div>';
+    const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef}=state;
+    try {
+      let deps=[],isRT=false;
+      if (getStrategy(lineInfo)==='stop-monitoring') {
+        for (const spId of spIds){const mr=toMonRef(spId);if(!mr)continue;try{const d=await callProxy('stop-monitoring',{MonitoringRef:mr,MaximumStopVisits:20});const p=parseSM(d,terminus);if(p.length){deps=p;isRT=true;break;}}catch{}}
+      } else if (lineRef) {
+        try{const d=await callProxy('estimated-timetable',{LineRef:lineRef});deps=parseET(d,spIds,terminus);isRT=true;}catch{}
       }
-    }, 1000);
+      if (!deps.length&&spIds.length){try{const d=await callProxy('v2/navitia/stop_points/'+spIds[0]+'/departures',{count:20});deps=parseNAV(d.departures||[],terminus);}catch{}}
+      renderDeps(el,deps,terminus,isRT,_dc?.disruptions||[]);
+    } catch(e){el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;renderRefreshBtn(el);}
   }
 
-  stopTimer() { clearInterval(this.timer); this.timer=null; }
-
-  async manualRefresh() {
-    this.countdown = REFRESH_SEC;
-    await this.refreshDepartures();
+  function parseET(data,spIds,terminus) {
+    const frame=data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
+    const journeys=frame?.EstimatedVehicleJourney||[];
+    const now=Date.now(); const nums=new Set(spIds.map(extractNumId).filter(Boolean)); const res=[];
+    journeys.forEach(vj=>{
+      (vj.EstimatedCalls?.EstimatedCall||[]).forEach(c=>{
+        const sr=c.StopPointRef?.value||''; const rn=sr.match(/:Q:(\d+):/)?.[1]||sr.match(/:(\d+):?$/)?.[1];
+        if(!rn||!nums.has(rn))return;
+        const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
+        if(terminus&&dest&&!lMatch(terminus,dest))return;
+        const et=c.ExpectedDepartureTime||c.ExpectedArrivalTime||c.AimedDepartureTime||c.AimedArrivalTime;
+        const at=c.AimedDepartureTime||c.AimedArrivalTime;
+        if(!et||new Date(et).getTime()<now-60000)return;
+        res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
+      });
+    });
+    res.sort((a,b)=>new Date(a.et)-new Date(b.et)); return res;
   }
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
-  goTo(step) {
-    this.stopTimer();
-    this.step = step;
-    this.render();
+  function parseSM(data,terminus) {
+    const visits=data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
+    const now=Date.now(); const res=[];
+    visits.forEach(v=>{
+      const vj=v.MonitoredVehicleJourney||{},c=vj.MonitoredCall||{};
+      const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||vj.DirectionName?.[0]?.value||'';
+      if(terminus&&dest&&!lMatch(terminus,dest))return;
+      const et=c.ExpectedDepartureTime||c.AimedDepartureTime||c.ExpectedArrivalTime||c.AimedArrivalTime;
+      const at=c.AimedDepartureTime||c.AimedArrivalTime;
+      if(!et||new Date(et).getTime()<now-60000)return;
+      res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
+    });
+    res.sort((a,b)=>new Date(a.et)-new Date(b.et)); return res;
   }
 
-  reset() {
-    this.stopTimer();
-    this.step = 'search';
-    this.stopAreaId = null; this.stopAreaName = null;
-    this.lineId = null; this.lineInfo = null; this.lineRef = null;
-    this.spIds = []; this.terminus = null;
-    this.departures = []; this.isRT = false;
-    this.render();
+  function parseNAV(deps,terminus) {
+    return deps.map(dep=>{
+      const sdt=dep.stop_date_time||{},info=dep.display_informations||{};
+      const et=n2iso(sdt.departure_date_time||sdt.arrival_date_time);
+      return {et,at:null,dest:info.direction||info.headsign||terminus,atStop:false,cancelled:false,rt:false};
+    }).filter(d=>d.et);
   }
-}
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-const panels = [];
-const grid = document.getElementById('grid');
+  function renderDeps(el,deps,terminus,isRT,disruptions) {
+    el.innerHTML='';
+    if (disruptions.length) renderDisBlock(disruptions,el);
 
-for (let i=0; i<PANEL_COUNT; i++) {
-  const el = document.createElement('div');
-  el.className = 'panel';
-  grid.appendChild(el);
-  const panel = new Panel(i);
-  panel.mount(el);
-  panels.push(panel);
-}
+    const header=document.createElement('div'); header.className='dep-header';
+    header.innerHTML=`${lineIcon(state.lineInfo,36)}<div class="dep-header-body"><div class="dep-header-title">→ ${terminus}</div><div class="dep-header-sub">${state.lineInfo.commercial_mode||''}<span class="fresh ${isRT?'rt':'th'}"><i class="ti ${isRT?'ti-bolt':'ti-calendar'}" aria-hidden="true" style="font-size:10px;margin-right:2px;vertical-align:-1px;"></i>${isRT?'Temps réel':'Théorique'}</span></div></div>`;
+    el.appendChild(header);
+
+    if (!deps.length){el.innerHTML+='<div class="empty"><i class="ti ti-clock-off" aria-hidden="true"></i><div class="empty-title">Aucun passage imminent</div><div class="empty-sub">Service peut-être terminé ou données indisponibles</div></div>';renderRefreshBtn(el);return;}
+
+    const g=document.createElement('div'); g.className='group';
+    deps.forEach(dep=>{
+      const expected=new Date(dep.et);
+      const aimed=dep.at?new Date(dep.at):null;
+      const timeStr=formatTime(expected);
+      const waitMin=Math.round((expected-Date.now())/60000);
+      let waitLabel,cls='';
+      if (dep.atStop||waitMin<=0){waitLabel='À quai';cls='quai';}
+      else if (waitMin<=1){waitLabel='1 min';cls='soon';}
+      else{waitLabel=waitMin+' min';cls=waitMin<=4?'soon':'';}
+
+      let delay='';
+      if (aimed&&dep.rt){const d=Math.round((expected-aimed)/60000);if(d>0)delay=`<span class="dep-delay late">+${d}min</span>`;else if(d<0)delay=`<span class="dep-delay early">${d}min</span>`;}
+      const cancel=dep.cancelled?`<span class="dep-cancelled">Supprimé</span>`:'';
+
+      const row=document.createElement('div'); row.className='dep-row';
+      row.innerHTML=`
+        <div class="dep-left">
+          ${lineIcon(state.lineInfo,32)}
+          <div><div class="dep-dest">${dep.dest}</div><div class="dep-mode">${state.lineInfo.commercial_mode||''}</div></div>
+        </div>
+        <div class="dep-right">
+          <div class="dep-wait ${cls}">${waitLabel}${delay}${cancel}</div>
+          <div class="dep-hour ${cls}">${timeStr}</div>
+        </div>`;
+      g.appendChild(row);
+    });
+    el.appendChild(g);
+    renderRefreshBtn(el);
+  }
+
+  function renderRefreshBtn(el) {
+    const btn=document.createElement('button'); btn.className='refresh-btn';
+    btn.innerHTML=`<i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;"></i> Actualiser`;
+    btn.onclick=refreshDepartures; el.appendChild(btn);
+  }
+
+  function backToSearch(){showView('search');updateBreadcrumb([]);}
 </script>
 </body>
 </html>
