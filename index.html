@@ -540,12 +540,27 @@
       label.textContent='Lignes disponibles — '+stopAreaName;
       el.appendChild(label);
 
-      const byMode=new Map();
-      lines.forEach(l=>{
-        const mode=l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'Autre';
-        if (!byMode.has(mode)) byMode.set(mode,[]);
-        byMode.get(mode).push(l);
-      });
+const modeOrder = { 'rer':0, 'transilien':0, 'train':0, 'métro':1, 'metro':1, 'tramway':2, 'tram':2, 'bus':3, 'noctilien':3 };
+
+function getModeRank(l) {
+  const mode = (l.commercial_modes?.[0]?.name || l.physical_modes?.[0]?.name || 'Autre').toLowerCase();
+  const rank = Object.entries(modeOrder).find(([k]) => mode.includes(k));
+  return rank ? rank[1] : 4;
+}
+
+// Trie les lignes par mode puis par code
+lines.sort((a, b) => {
+  const ra = getModeRank(a), rb = getModeRank(b);
+  if (ra !== rb) return ra - rb;
+  return (a.code||'').localeCompare(b.code||'', undefined, { numeric: true });
+});
+
+const byMode = new Map();
+lines.forEach(l => {
+  const mode = l.commercial_modes?.[0]?.name || l.physical_modes?.[0]?.name || 'Autre';
+  if (!byMode.has(mode)) byMode.set(mode, []);
+  byMode.get(mode).push(l);
+});
 
       byMode.forEach((linesInMode,modeName)=>{
         const modeLabel=document.createElement('div');
