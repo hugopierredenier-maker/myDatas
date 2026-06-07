@@ -403,74 +403,103 @@
     } catch(e) { el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; }
   }
 
-  // ── Vue 3 : Directions ──────────────────────────────────────────────────────
-  // FIX : on appelle v2/navitia/lines/{lineId}/routes pour avoir les terminus
-  // puis v2/navitia/stop_areas/{stopAreaId}/lines/{lineId}/stop_points pour les qIds
-  async function loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName) {
+  // ── Vue 3 : Directions avec filtre Aller / Retour ─────────────────────────
+  let _dirCache = null; // Cache pour éviter de recharger l'API au changement de filtre
+
+  async function loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName, activeFilter) {
     state.lineId=lineId; state.lineInfo=lineInfo;
     state.lineRef=toLineRef(lineId, lineInfo.codes);
     showView('directions');
     updateBreadcrumb([
       {label:document.getElementById('search-input').value, fn:'backToSearch()'},
-      {label:stopAreaName, fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}')` },
+      {label:stopAreaName, fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\'")}')` },
       {label:lineName}
     ]);
     const el=document.getElementById('directions-content');
-    el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des directions…</div>';
 
-    try {
-      // ✅ FIX 1 : récupérer les routes directement depuis la ligne (toujours fiable)
-      const [routesData, spData] = await Promise.all([
-        callProxy('v2/navitia/lines/'+lineId+'/routes', {count:10}),
-        callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points', {count:30})
-      ]);
-
-      const routes    = routesData.routes || [];
-      const stopPoints = spData.stop_points || [];
-
-      // Tous les stop_point IDs de cette ligne à cet arrêt (pour filtrer les départs)
-      const allSpIds = stopPoints.map(sp => sp.id);
-
-      if (!routes.length) throw new Error('Aucune direction trouvée pour cette ligne');
-
-      el.innerHTML='';
-      const label=document.createElement('div'); label.className='section-label';
-      label.innerHTML=`${lineIcon(lineInfo,22)}<span>${lineName} — Choisir une direction</span>`;
-      el.appendChild(label);
-
-      const card=document.createElement('div'); card.className='card';
-
-      routes.forEach(route=>{
-        // Terminus depuis route.direction (c'est le champ stable)
-        const terminus = route.direction?.stop_area?.name || route.name || '?';
-
-        // ✅ FIX 2 : filtrer les stop_points qui appartiennent à cette route
-        // On utilise sp.routes pour matcher — si vide, on prend tous les stop_points
-        const routeSpIds = stopPoints
-          .filter(sp => {
-            if (!sp.routes || !sp.routes.length) return true; // si pas de routes, inclure
-            return sp.routes.some(r => r.id === route.id);
-          })
-          .map(sp => sp.id);
-
-        const spIds = routeSpIds.length ? routeSpIds : allSpIds;
-
-        const item=document.createElement('div'); item.className='list-item';
-        item.innerHTML=`
-          <div style="flex-shrink:0;">${lineIcon(lineInfo,36)}</div>
-          <div class="item-info">
-            <div class="item-name">→ ${terminus}</div>
-          </div>
-          <span style="color:var(--muted);font-size:20px;">›</span>`;
-        item.onclick=()=>loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName);
-        card.appendChild(item);
-      });
-
-      el.appendChild(card);
-    } catch(e) {
-      el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;
+    // Ne recharge l'API que si on change de ligne ou d'arrêt
+    const cacheKey = stopAreaId + '|' + lineId;
+    if (!_dirCache || _dirCache.key !== cacheKey) {
+      el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des directions…</div>';
+      try {
+        const [routesData, spData] = await Promise.all([
+          callProxy('v2/navitia/lines/'+lineId+'/routes', {count:10}),
+          callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points', {count:30})
+        ]);
+        _dirCache = { key: cacheKey, routes: routesData.routes||[], stopPoints: spData.stop_points||[] };
+      } catch(e) {
+        el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; return;
+      }
     }
+
+    const { routes, stopPoints } = _dirCache;
+    const allSpIds = stopPoints.map(sp => sp.id);
+    if (!routes.length) { el.innerHTML='<div class="error-box">Aucune direction trouvée.</div>'; return; }
+
+    const outbound  = routes.filter(r => r.direction_type === 'outbound');
+    const inbound   = routes.filter(r => r.direction_type === 'inbound');
+    const hasFilter = outbound.length > 0 && inbound.length > 0;
+    const filter    = activeFilter || (hasFilter ? 'outbound' : null);
+
+    el.innerHTML='';
+    const label=document.createElement('div'); label.className='section-label';
+    label.innerHTML=`${lineIcon(lineInfo,22)}<span>${lineName} — Choisir une direction</span>`;
+    el.appendChild(label);
+
+    // ── Onglets Aller / Retour ──
+    if (hasFilter) {
+      const tabs=document.createElement('div');
+      tabs.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
+      [
+        {dir:'outbound', lbl:'→ Aller'},
+        {dir:'inbound',  lbl:'← Retour'}
+      ].forEach(({dir, lbl}) => {
+        const active = filter === dir;
+        const btn=document.createElement('button');
+        btn.textContent = lbl;
+        btn.style.cssText = [
+          'flex:1;height:40px;border-radius:9px;',
+          'font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;',
+          'transition:border-color .15s,background .15s,color .15s;',
+          active
+            ? 'border:2px solid var(--accent);background:var(--accent-bg);color:var(--accent);'
+            : 'border:1.5px solid var(--border);background:var(--surface);color:var(--muted);'
+        ].join('');
+        if (!active) {
+          btn.onmouseenter=()=>{ btn.style.borderColor='var(--accent)'; btn.style.color='var(--text)'; };
+          btn.onmouseleave=()=>{ btn.style.borderColor='var(--border)'; btn.style.color='var(--muted)'; };
+        }
+        btn.onclick=()=>loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName, dir);
+        tabs.appendChild(btn);
+      });
+      el.appendChild(tabs);
+    }
+
+    const visibleRoutes = hasFilter ? routes.filter(r => r.direction_type === filter) : routes;
+    if (!visibleRoutes.length) {
+      el.innerHTML+='<div class="empty"><div class="icon">😕</div>Aucune destination dans ce sens.</div>'; return;
+    }
+
+    const card=document.createElement('div'); card.className='card';
+    visibleRoutes.forEach(route => {
+      const terminus = route.direction?.stop_area?.name || route.name || '?';
+      const routeSpIds = stopPoints
+        .filter(sp => !sp.routes?.length || sp.routes.some(r => r.id === route.id))
+        .map(sp => sp.id);
+      const spIds = routeSpIds.length ? routeSpIds : allSpIds;
+      const arrow = filter === 'inbound' ? '←' : '→';
+      const item=document.createElement('div'); item.className='list-item';
+      item.innerHTML=`
+        <div style="flex-shrink:0;">${lineIcon(lineInfo,36)}</div>
+        <div class="item-info"><div class="item-name">${arrow} ${terminus}</div></div>
+        <span style="color:var(--muted);font-size:20px;">›</span>`;
+      item.onclick=()=>loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName);
+      card.appendChild(item);
+    });
+    el.appendChild(card);
   }
+
+
 
   // ── Vue 4 : Horaires ────────────────────────────────────────────────────────
   async function loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName) {
