@@ -869,9 +869,7 @@ function stopAutoRefresh() {
     } catch(e){el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;renderRefreshBtn(el);}
     el.appendChild(header);
 
-// ===== BOUTON FAVORI =====
-
-const favBtn = document.createElement("button");
+    const favBtn = document.createElement("button");
 
 favBtn.className = "refresh-btn";
 
@@ -894,6 +892,10 @@ favBtn.onclick = () => {
 };
 
 el.appendChild(favBtn);
+
+
+// ===== BOUTON FAVORI =====
+
 
 // =========================
 
