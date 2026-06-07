@@ -12,6 +12,8 @@
       --bg: #f5f4f0; --surface: #ffffff; --border: rgba(0,0,0,0.09);
       --text: #1a1a1a; --muted: #6b6b6b; --accent: #1a56db; --accent-bg: #eef3ff;
       --danger-bg: #fef2f2; --danger-border: #dc2626; --danger-text: #7f1d1d;
+      --warn-bg: #fffbeb; --warn-border: #d97706; --warn-text: #92400e;
+      --info-bg: #eff6ff; --info-border: #3b82f6; --info-text: #1e40af;
       --success: #15803d; --radius: 14px; --radius-sm: 9px;
     }
     @media (prefers-color-scheme: dark) {
@@ -19,6 +21,8 @@
         --bg: #111110; --surface: #1c1c1b; --border: rgba(255,255,255,0.09);
         --text: #f0ede8; --muted: #888885; --accent: #5b8af5; --accent-bg: #1a2540;
         --danger-bg: #2a1010; --danger-border: #dc2626; --danger-text: #fca5a5;
+        --warn-bg: #2a1a00; --warn-border: #d97706; --warn-text: #fbbf24;
+        --info-bg: #0f1f40; --info-border: #3b82f6; --info-text: #93c5fd;
       }
     }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -128,6 +132,49 @@
       background: var(--surface); color: var(--muted); margin-top: 8px;
     }
     .refresh-btn:hover { background: var(--bg); }
+
+    /* ── Perturbations ── */
+    .disruption {
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      margin-bottom: 8px; border-left: 4px solid;
+    }
+    .disruption.blocking   { background: var(--danger-bg); border-color: var(--danger-border); }
+    .disruption.warning    { background: var(--warn-bg);   border-color: var(--warn-border);   }
+    .disruption.info       { background: var(--info-bg);   border-color: var(--info-border);   }
+    .disruption-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .disruption-icon   { font-size: 16px; flex-shrink: 0; }
+    .disruption-cause  { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .disruption.blocking .disruption-cause { color: var(--danger-text); }
+    .disruption.warning  .disruption-cause { color: var(--warn-text);   }
+    .disruption.info     .disruption-cause { color: var(--info-text);   }
+    .disruption-msg  { font-size: 13px; line-height: 1.5; }
+    .disruption.blocking .disruption-msg { color: var(--danger-text); }
+    .disruption.warning  .disruption-msg { color: var(--warn-text);   }
+    .disruption.info     .disruption-msg { color: var(--info-text);   }
+    .disruption-period { font-size: 11px; opacity: .75; margin-top: 5px; }
+    .disruption-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 2px 7px;
+      border-radius: 99px; margin-left: 6px; vertical-align: middle;
+      cursor: default;
+    }
+    .disruption-badge.blocking { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
+    .disruption-badge.warning  { background: var(--warn-bg);   color: var(--warn-text);   border: 1px solid var(--warn-border);   }
+    .disruption-badge.info     { background: var(--info-bg);   color: var(--info-text);   border: 1px solid var(--info-border);   }
+
+    /* Collapsible disruptions */
+    .disruptions-toggle {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text);
+      border-top: 1px solid var(--border);
+    }
+    .disruptions-toggle:hover { background: var(--bg); }
+    .disruptions-toggle .arrow { transition: transform .2s; font-size: 11px; color: var(--muted); }
+    .disruptions-toggle.open .arrow { transform: rotate(180deg); }
+    .disruptions-body { padding: 0 14px 14px; display: none; }
+    .disruptions-body.open { display: block; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
@@ -140,7 +187,7 @@
 
   <div class="search-bar">
     <div class="search-wrapper">
-      <input type="text" id="search-input" placeholder="Ex: Châtelet, Les Moulineaux, Nation…" autocomplete="off" />
+      <input type="text" id="search-input" placeholder="Ex: Les Moulineaux, Châtelet, Nation…" autocomplete="off" />
       <div class="autocomplete-list" id="ac-list"></div>
     </div>
     <button id="search-btn" onclick="searchStops()">Rechercher</button>
@@ -169,13 +216,10 @@
   let state = {
     stopAreaId:'', stopAreaName:'',
     lineId:'', lineInfo:null, lineRef:'',
-    // Pour la vue 4
-    currentTerminus:'', currentStopAreaId:'', currentStopAreaName:'', currentLineName:'',
-    // stop_point IDs de la direction choisie (pour filtrer les départs Navitia)
-    currentStopPointIds:[]
+    currentTerminus:'', currentStopPointIds:[],
+    currentStopAreaId:'', currentStopAreaName:'', currentLineName:''
   };
 
-  // ── Proxy ──────────────────────────────────────────────────────────────────
   async function callProxy(endpoint, params={}) {
     const qs = new URLSearchParams({ endpoint, ...params }).toString();
     const r = await fetch('/api/prim?' + qs);
@@ -183,7 +227,6 @@
     return r.json();
   }
 
-  // ── Utils ──────────────────────────────────────────────────────────────────
   function showView(name) {
     ['search','lines','directions','departures'].forEach(v =>
       document.getElementById('view-'+v).style.display = v===name ? 'block' : 'none'
@@ -206,6 +249,7 @@
   }
 
   function textColor(hex) {
+    hex=(hex||'').replace('#',''); if(hex.length!==6) return '#fff';
     const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
     return (r*299+g*587+b*114)/1000>128 ? '#000' : '#fff';
   }
@@ -214,9 +258,9 @@
     const code = String(info.code||info.label||'?');
     const mode = (info.commercial_mode||'').toLowerCase();
     const bg   = info.color ? '#'+info.color.replace('#','') : '#888';
-    const fg   = textColor(info.color ? info.color.replace('#','') : '888888');
+    const fg   = textColor(info.color||'888888');
     const cx=size/2, cy=size/2;
-    const fs = code.length<=2 ? Math.round(size*.46) : code.length===3 ? Math.round(size*.34) : Math.round(size*.27);
+    const fs = code.length<=2?Math.round(size*.46):code.length===3?Math.round(size*.34):Math.round(size*.27);
     let shape, w=size;
     if (mode.includes('métro')||mode.includes('metro')) {
       shape=`<circle cx="${cx}" cy="${cy}" r="${cx-.5}" fill="${bg}"/>`;
@@ -226,8 +270,7 @@
     } else if (mode.includes('tram')) {
       shape=`<polygon points="${cx},.5 ${size-.5},${cy} ${cx},${size-.5} .5,${cy}" fill="${bg}"/>`;
     } else {
-      const charW=fs*.65;
-      w=Math.max(size, Math.round(charW*code.length+size*.5));
+      const charW=fs*.65; w=Math.max(size,Math.round(charW*code.length+size*.5));
       const rx=Math.round(size*.22);
       shape=`<rect x=".5" y=".5" width="${w-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
       return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>Ligne ${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
@@ -244,33 +287,137 @@
     return '🚉';
   }
 
-  // Construit le LineRef SIRI depuis l'ID Navitia + les codes source
-  // Tous les formats : "line:IDFM:C01379" ou codes[source]="FR1:Line:C01379:"
   function toLineRef(lineId, lineCodes) {
-    // Priorité 1 : code source Navitia (le plus fiable)
     if (lineCodes && Array.isArray(lineCodes)) {
-      const src = lineCodes.find(c => c.type === 'source');
-      if (src) {
-        const m = src.value.match(/Line:(C[\w-]+)/);
-        if (m) return `STIF:Line::${m[1]}:`;
-      }
+      const src = lineCodes.find(c => c.type==='source');
+      if (src) { const m=src.value.match(/Line:(C[\w-]+)/); if (m) return `STIF:Line::${m[1]}:`; }
     }
-    // Priorité 2 : extraire depuis l'ID Navitia "line:IDFM:C01379"
     const m = lineId.match(/IDFM:(C[\w-]+)/);
     return m ? `STIF:Line::${m[1]}:` : null;
   }
 
-  // Extrait l'ID numérique final d'un stop_point Navitia
-  // "stop_point:IDFM:22297" → "22297"
   function extractNumericId(id) {
     if (!id) return null;
     const m = id.match(/:(\d+)$/);
     return m ? m[1] : null;
   }
 
+  function toMonitoringRef(spId) {
+    const m = spId.match(/:(\d+)$/);
+    return m ? `STIF:StopPoint:Q:${m[1]}:` : null;
+  }
+
+  function normalize(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+  function loosMatch(a,b) {
+    const na=normalize(a), nb=normalize(b);
+    if (na===nb||na.includes(nb)||nb.includes(na)) return true;
+    const wa=na.split(/\s+/).find(w=>w.length>=4);
+    const wb=nb.split(/\s+/).find(w=>w.length>=4);
+    return wa&&wb&&wa===wb;
+  }
+
+  function navitiaToISO(str) {
+    if (!str) return null;
+    return `${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}T${str.slice(9,11)}:${str.slice(11,13)}:${str.slice(13,15)}`;
+  }
+
   function fillAndSearch(name) {
     document.getElementById('search-input').value = name;
     closeAC(); searchStops();
+  }
+
+  // ── Perturbations ────────────────────────────────────────────────────────────
+  function disruptionLevel(cause, effect) {
+    const c=(cause||'').toLowerCase(), e=(effect||'').toLowerCase();
+    if (e.includes('no_service')||e.includes('significant')||c.includes('accident')||c.includes('travaux')) return 'blocking';
+    if (e.includes('reduced')||e.includes('detour')||c.includes('perturbation')||c.includes('incident')) return 'warning';
+    return 'info';
+  }
+
+  function disruptionIcon(level) {
+    if (level==='blocking') return '🚫';
+    if (level==='warning')  return '⚠️';
+    return 'ℹ️';
+  }
+
+  function formatPeriod(periods) {
+    if (!periods||!periods.length) return '';
+    const p = periods[0];
+    const from = p.begin ? new Date(p.begin).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    const to   = p.end   ? new Date(p.end).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    if (from && to) return `Du ${from} au ${to}`;
+    if (from) return `Depuis le ${from}`;
+    return '';
+  }
+
+  async function fetchDisruptions(lineId) {
+    try {
+      const data = await callProxy('v2/navitia/lines/'+lineId+'/disruptions', {count:20});
+      return data.disruptions || [];
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function renderDisruptionBadge(disruptions) {
+    if (!disruptions.length) return '';
+    const blocking = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='blocking').length;
+    const warning  = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='warning').length;
+    const info     = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='info').length;
+    if (blocking) return `<span class="disruption-badge blocking">🚫 ${blocking} perturbation${blocking>1?'s':''}</span>`;
+    if (warning)  return `<span class="disruption-badge warning">⚠️ ${warning} avertissement${warning>1?'s':''}</span>`;
+    if (info)     return `<span class="disruption-badge info">ℹ️ ${info} info${info>1?'s':''}</span>`;
+    return '';
+  }
+
+  function renderDisruptionsBlock(disruptions, container) {
+    if (!disruptions.length) return;
+
+    const blocking = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='blocking').length;
+    const warning  = disruptions.filter(d=>disruptionLevel(d.cause,d.disruption_effect||d.effect)==='warning').length;
+    const count = disruptions.length;
+    const topLevel = blocking ? 'blocking' : warning ? 'warning' : 'info';
+    const icons = blocking ? '🚫' : warning ? '⚠️' : 'ℹ️';
+    const label = `${icons} ${count} message${count>1?'s':(topLevel==='blocking'?' de perturbation':topLevel==='warning'?" d'avertissement":"d'information")}`;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px;';
+
+    const toggle = document.createElement('button');
+    toggle.className='disruptions-toggle';
+    toggle.innerHTML=`<span>${label}</span><span class="arrow">▼</span>`;
+    toggle.onclick=()=>{
+      toggle.classList.toggle('open');
+      body.classList.toggle('open');
+    };
+
+    const body = document.createElement('div');
+    body.className='disruptions-body';
+
+    disruptions.forEach(d => {
+      const level = disruptionLevel(d.cause, d.disruption_effect||d.effect);
+      const icon  = disruptionIcon(level);
+      const cause = d.cause || d.category || 'Information';
+      const msgs  = (d.messages||[]).map(m=>m.text).filter(Boolean);
+      const msg   = msgs.join(' ') || d.title || d.header || '';
+      const period= formatPeriod(d.application_periods||d.periods);
+
+      const div = document.createElement('div');
+      div.className='disruption '+level;
+      div.innerHTML=`
+        <div class="disruption-header">
+          <span class="disruption-icon">${icon}</span>
+          <span class="disruption-cause">${cause}</span>
+        </div>
+        ${msg ? `<div class="disruption-msg">${msg}</div>` : ''}
+        ${period ? `<div class="disruption-period">🕐 ${period}</div>` : ''}
+      `;
+      body.appendChild(div);
+    });
+
+    wrapper.appendChild(toggle);
+    wrapper.appendChild(body);
+    container.appendChild(wrapper);
   }
 
   // ── Autocomplete ────────────────────────────────────────────────────────────
@@ -355,7 +502,7 @@
     btn.disabled=false; btn.textContent='Rechercher';
   }
 
-  // ── Vue 2 : Lignes ──────────────────────────────────────────────────────────
+  // ── Vue 2 : Lignes + perturbations ─────────────────────────────────────────
   async function loadLines(stopAreaId, stopAreaName) {
     state.stopAreaId=stopAreaId; state.stopAreaName=stopAreaName;
     showView('lines');
@@ -366,8 +513,26 @@
     const el=document.getElementById('lines-content');
     el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des lignes…</div>';
     try {
-      const data=await callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines',{count:40});
-      const lines=data.lines||[];
+      // Charge les lignes ET les perturbations de l'arrêt en parallèle
+      const [linesData, disruptionsData] = await Promise.all([
+        callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines', {count:40}),
+        callProxy('v2/navitia/stop_areas/'+stopAreaId+'/disruptions', {count:30}).catch(()=>({disruptions:[]}))
+      ]);
+      const lines = linesData.lines || [];
+      const allDisruptions = disruptionsData.disruptions || [];
+
+      // Indexe les perturbations par ligne
+      const disruptionsByLine = {};
+      allDisruptions.forEach(d => {
+        (d.impacted_objects||[]).forEach(obj => {
+          const lid = obj.pt_object?.line?.id || obj.id;
+          if (lid) {
+            if (!disruptionsByLine[lid]) disruptionsByLine[lid]=[];
+            disruptionsByLine[lid].push(d);
+          }
+        });
+      });
+
       el.innerHTML='';
       if (!lines.length) { el.innerHTML='<div class="empty"><div class="icon">😕</div>Aucune ligne trouvée.</div>'; return; }
 
@@ -375,7 +540,6 @@
       label.textContent='Lignes disponibles — '+stopAreaName;
       el.appendChild(label);
 
-      // Grouper par mode commercial
       const byMode=new Map();
       lines.forEach(l=>{
         const mode=l.commercial_modes?.[0]?.name||l.physical_modes?.[0]?.name||'Autre';
@@ -391,10 +555,20 @@
         const card=document.createElement('div'); card.className='card';
         linesInMode.forEach(l=>{
           const info={code:l.code||l.name, color:l.color, commercial_mode:l.commercial_modes?.[0]?.name||'', codes:l.codes||[]};
-          // Terminus depuis les routes de la ligne (fiable)
           const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,3).join(' · ');
+          const lineDisruptions = disruptionsByLine[l.id] || [];
+          const badge = renderDisruptionBadge(lineDisruptions);
           const item=document.createElement('div'); item.className='list-item';
-          item.innerHTML=`<div style="flex-shrink:0;">${lineIcon(info,34)}</div><div class="item-info"><div class="item-name">${l.name||l.code}</div>${termini?`<div class="item-sub">${termini}</div>`:''}</div><span style="color:var(--muted);font-size:20px;">›</span>`;
+          item.style.flexWrap='wrap';
+          item.innerHTML=`
+            <div style="flex-shrink:0;">${lineIcon(info,34)}</div>
+            <div class="item-info">
+              <div class="item-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+                ${l.name||l.code}${badge}
+              </div>
+              ${termini?`<div class="item-sub">${termini}</div>`:''}
+            </div>
+            <span style="color:var(--muted);font-size:20px;">›</span>`;
           item.onclick=()=>loadDirections(stopAreaId,stopAreaName,l.id,info,l.name||l.code);
           card.appendChild(item);
         });
@@ -403,8 +577,8 @@
     } catch(e) { el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; }
   }
 
-  // ── Vue 3 : Directions avec filtre Aller / Retour ─────────────────────────
-  let _dirCache = null; // Cache pour éviter de recharger l'API au changement de filtre
+  // ── Vue 3 : Directions + perturbations de la ligne ─────────────────────────
+  let _dirCache = null;
 
   async function loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName, activeFilter) {
     state.lineId=lineId; state.lineInfo=lineInfo;
@@ -412,94 +586,91 @@
     showView('directions');
     updateBreadcrumb([
       {label:document.getElementById('search-input').value, fn:'backToSearch()'},
-      {label:stopAreaName, fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\'")}')` },
+      {label:stopAreaName, fn:`loadLines('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}')` },
       {label:lineName}
     ]);
     const el=document.getElementById('directions-content');
 
-    // Ne recharge l'API que si on change de ligne ou d'arrêt
-    const cacheKey = stopAreaId + '|' + lineId;
-    if (!_dirCache || _dirCache.key !== cacheKey) {
-      el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des directions…</div>';
+    const cacheKey=stopAreaId+'|'+lineId;
+    if (!_dirCache||_dirCache.key!==cacheKey) {
+      el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement…</div>';
       try {
-        const [routesData, spData] = await Promise.all([
-          callProxy('v2/navitia/lines/'+lineId+'/routes', {count:10}),
-          callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points', {count:30})
+        const [routesData, spData, disruptions] = await Promise.all([
+          callProxy('v2/navitia/lines/'+lineId+'/routes',{count:10}),
+          callProxy('v2/navitia/stop_areas/'+stopAreaId+'/lines/'+lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]})),
+          fetchDisruptions(lineId)
         ]);
-        _dirCache = { key: cacheKey, routes: routesData.routes||[], stopPoints: spData.stop_points||[] };
-      } catch(e) {
-        el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; return;
-      }
+        // Fallback stop_points
+        let stopPoints = spData.stop_points||[];
+        if (!stopPoints.length) {
+          const fb = await callProxy('v2/navitia/stop_areas/'+stopAreaId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));
+          stopPoints = fb.stop_points||[];
+        }
+        _dirCache={key:cacheKey, routes:routesData.routes||[], stopPoints, disruptions};
+      } catch(e) { el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`; return; }
     }
 
-    const { routes, stopPoints } = _dirCache;
-    const allSpIds = stopPoints.map(sp => sp.id);
+    const {routes, stopPoints, disruptions} = _dirCache;
+    const allSpIds = stopPoints.map(sp=>sp.id);
     if (!routes.length) { el.innerHTML='<div class="error-box">Aucune direction trouvée.</div>'; return; }
 
-    const outbound  = routes.filter(r => r.direction_type === 'outbound');
-    const inbound   = routes.filter(r => r.direction_type === 'inbound');
-    const hasFilter = outbound.length > 0 && inbound.length > 0;
-    const filter    = activeFilter || (hasFilter ? 'outbound' : null);
+    const outbound=routes.filter(r=>r.direction_type==='outbound');
+    const inbound =routes.filter(r=>r.direction_type==='inbound');
+    const hasFilter=outbound.length>0&&inbound.length>0;
+    const filter=activeFilter||(hasFilter?'outbound':null);
 
     el.innerHTML='';
+
+    // ── Perturbations de la ligne (collapsible) ──
+    if (disruptions.length) {
+      renderDisruptionsBlock(disruptions, el);
+    }
+
     const label=document.createElement('div'); label.className='section-label';
     label.innerHTML=`${lineIcon(lineInfo,22)}<span>${lineName} — Choisir une direction</span>`;
     el.appendChild(label);
 
-    // ── Onglets Aller / Retour ──
     if (hasFilter) {
       const tabs=document.createElement('div');
       tabs.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
-      [
-        {dir:'outbound', lbl:'→ Aller'},
-        {dir:'inbound',  lbl:'← Retour'}
-      ].forEach(({dir, lbl}) => {
-        const active = filter === dir;
+      [{dir:'outbound',lbl:'→ Aller'},{dir:'inbound',lbl:'← Retour'}].forEach(({dir,lbl})=>{
+        const active=filter===dir;
         const btn=document.createElement('button');
-        btn.textContent = lbl;
-        btn.style.cssText = [
+        btn.textContent=lbl;
+        btn.style.cssText=[
           'flex:1;height:40px;border-radius:9px;',
-          'font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;',
-          'transition:border-color .15s,background .15s,color .15s;',
+          'font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;',
           active
             ? 'border:2px solid var(--accent);background:var(--accent-bg);color:var(--accent);'
             : 'border:1.5px solid var(--border);background:var(--surface);color:var(--muted);'
         ].join('');
-        if (!active) {
-          btn.onmouseenter=()=>{ btn.style.borderColor='var(--accent)'; btn.style.color='var(--text)'; };
-          btn.onmouseleave=()=>{ btn.style.borderColor='var(--border)'; btn.style.color='var(--muted)'; };
-        }
-        btn.onclick=()=>loadDirections(stopAreaId, stopAreaName, lineId, lineInfo, lineName, dir);
+        btn.onclick=()=>loadDirections(stopAreaId,stopAreaName,lineId,lineInfo,lineName,dir);
         tabs.appendChild(btn);
       });
       el.appendChild(tabs);
     }
 
-    const visibleRoutes = hasFilter ? routes.filter(r => r.direction_type === filter) : routes;
-    if (!visibleRoutes.length) {
-      el.innerHTML+='<div class="empty"><div class="icon">😕</div>Aucune destination dans ce sens.</div>'; return;
-    }
+    const visibleRoutes=hasFilter?routes.filter(r=>r.direction_type===filter):routes;
+    if (!visibleRoutes.length) { el.innerHTML+='<div class="empty"><div class="icon">😕</div>Aucune destination dans ce sens.</div>'; return; }
 
     const card=document.createElement('div'); card.className='card';
-    visibleRoutes.forEach(route => {
-      const terminus = route.direction?.stop_area?.name || route.name || '?';
-      const routeSpIds = stopPoints
-        .filter(sp => !sp.routes?.length || sp.routes.some(r => r.id === route.id))
-        .map(sp => sp.id);
-      const spIds = routeSpIds.length ? routeSpIds : allSpIds;
-      const arrow = filter === 'inbound' ? '←' : '→';
+    visibleRoutes.forEach(route=>{
+      const terminus=route.direction?.stop_area?.name||route.name||'?';
+      const routeSpIds=stopPoints
+        .filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id))
+        .map(sp=>sp.id);
+      const spIds=routeSpIds.length?routeSpIds:allSpIds;
+      const arrow=filter==='inbound'?'←':'→';
       const item=document.createElement('div'); item.className='list-item';
       item.innerHTML=`
         <div style="flex-shrink:0;">${lineIcon(lineInfo,36)}</div>
         <div class="item-info"><div class="item-name">${arrow} ${terminus}</div></div>
         <span style="color:var(--muted);font-size:20px;">›</span>`;
-      item.onclick=()=>loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName);
+      item.onclick=()=>loadDepartures(terminus,spIds,stopAreaId,stopAreaName,lineName);
       card.appendChild(item);
     });
     el.appendChild(card);
   }
-
-
 
   // ── Vue 4 : Horaires ────────────────────────────────────────────────────────
   async function loadDepartures(terminus, spIds, stopAreaId, stopAreaName, lineName) {
@@ -510,212 +681,122 @@
       {label:lineName, fn:`loadDirections('${stopAreaId}','${stopAreaName.replace(/'/g,"\\'")}','${state.lineId}',${JSON.stringify(state.lineInfo)},'${lineName.replace(/'/g,"\\'")}')` },
       {label:'→ '+terminus}
     ]);
-    // Sauvegarder pour le refresh
-    Object.assign(state, {
-      currentTerminus: terminus,
-      currentStopPointIds: spIds,
-      currentStopAreaId: stopAreaId,
-      currentStopAreaName: stopAreaName,
-      currentLineName: lineName
-    });
+    Object.assign(state,{currentTerminus:terminus,currentStopPointIds:spIds,currentStopAreaId:stopAreaId,currentStopAreaName:stopAreaName,currentLineName:lineName});
     await refreshDepartures();
   }
 
-  // Détermine le bon endpoint SIRI selon le mode de transport
-  // Tram/Bus → estimated-timetable (données par ligne)
-  // Métro/RER/Transilien → stop-monitoring (données par arrêt, plus fiable)
   function getSiriStrategy(lineInfo) {
-    const mode = (lineInfo.commercial_mode || '').toLowerCase();
-    if (mode.includes('métro') || mode.includes('metro') ||
-        mode.includes('rer') || mode.includes('transilien') || mode.includes('train')) {
-      return 'stop-monitoring';
-    }
+    const mode=(lineInfo.commercial_mode||'').toLowerCase();
+    if (mode.includes('métro')||mode.includes('metro')||mode.includes('rer')||mode.includes('transilien')||mode.includes('train')) return 'stop-monitoring';
     return 'estimated-timetable';
-  }
-
-  // Convertit un stop_point ID Navitia en MonitoringRef SIRI
-  // "stop_point:IDFM:22297" → "STIF:StopPoint:Q:22297:"
-  function toMonitoringRef(spId) {
-    const m = spId.match(/:(\d+)$/);
-    return m ? `STIF:StopPoint:Q:${m[1]}:` : null;
   }
 
   async function refreshDepartures() {
     const el=document.getElementById('departures-content');
     el.innerHTML='<div class="empty"><span class="spinner"></span> Chargement des horaires temps réel…</div>';
-    const {currentTerminus:terminus, currentStopPointIds:spIds, lineInfo, lineRef} = state;
+    const {currentTerminus:terminus,currentStopPointIds:spIds,lineInfo,lineRef} = state;
 
     try {
-      let departures = [];
-      let isRealtime = false;
-      const strategy = getSiriStrategy(lineInfo);
+      let departures=[], isRealtime=false;
+      const strategy=getSiriStrategy(lineInfo);
 
-      if (strategy === 'stop-monitoring') {
-        // ── Métro / RER / Transilien : stop-monitoring par quai ──
-        // On tente chaque stop_point jusqu'à obtenir des résultats
+      if (strategy==='stop-monitoring') {
         for (const spId of spIds) {
-          const monRef = toMonitoringRef(spId);
+          const monRef=toMonitoringRef(spId);
           if (!monRef) continue;
           try {
-            const data = await callProxy('stop-monitoring', {
-              MonitoringRef: monRef,
-              MaximumStopVisits: 20
-            });
-            const parsed = parseStopMonitoring(data, terminus);
-            if (parsed.length) {
-              departures = parsed;
-              isRealtime = true;
-              break;
-            }
-          } catch(e) { console.warn('stop-monitoring failed for', spId, e); }
+            const data=await callProxy('stop-monitoring',{MonitoringRef:monRef,MaximumStopVisits:20});
+            const parsed=parseStopMonitoring(data,terminus);
+            if (parsed.length) { departures=parsed; isRealtime=true; break; }
+          } catch(e) { /* ignore */ }
         }
       } else {
-        // ── Tram / Bus : estimated-timetable par ligne ──
         if (lineRef) {
           try {
-            const data = await callProxy('estimated-timetable', {LineRef: lineRef});
-            departures = parseSiri(data, spIds, terminus);
-            isRealtime = true;
-          } catch(e) { console.warn('estimated-timetable failed', e); }
+            const data=await callProxy('estimated-timetable',{LineRef:lineRef});
+            departures=parseSiri(data,spIds,terminus);
+            isRealtime=true;
+          } catch(e) { /* ignore */ }
         }
       }
 
-      // Fallback Navitia si SIRI vide ou échec
-      if (!departures.length) {
-        const navData = await callProxy(
-          'v2/navitia/stop_points/' + spIds[0] + '/departures',
-          {count: 20}
-        );
-        departures = parseNavitia(navData.departures || [], terminus);
-        isRealtime = false;
+      if (!departures.length && spIds.length) {
+        try {
+          const navData=await callProxy('v2/navitia/stop_points/'+spIds[0]+'/departures',{count:20});
+          departures=parseNavitia(navData.departures||[],terminus);
+          isRealtime=false;
+        } catch(e) { /* ignore */ }
       }
 
-      renderDepartures(el, departures, terminus, isRealtime);
+      // Charge les perturbations en parallèle du rendu
+      const disruptions = _dirCache?.disruptions || [];
+
+      renderDepartures(el,departures,terminus,isRealtime,disruptions);
     } catch(e) {
       el.innerHTML=`<div class="error-box">Erreur : ${e.message}</div>`;
       renderRefreshBtn(el);
     }
   }
 
-  // ── Parsers ──────────────────────────────────────────────────────────────────
-
-  // Parse estimated-timetable SIRI
-  // ✅ FIX 3 : filtrage terminus assoupli — on compare après normalisation
-  function parseSiri(data, spIds, terminus) {
-    const frame = data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]
-      ?.EstimatedJourneyVersionFrame?.[0];
-    const journeys = frame?.EstimatedVehicleJourney || [];
-    const now = Date.now();
-    const result = [];
-
-    // Construire l'ensemble des IDs numériques attendus
-    const numericIds = new Set(spIds.map(extractNumericId).filter(Boolean));
-
-    journeys.forEach(vj => {
-      const calls = vj.EstimatedCalls?.EstimatedCall || [];
-      calls.forEach(call => {
-        // ✅ FIX : matcher sur l'ID numérique dans le StopPointRef SIRI
-        const spRef = call.StopPointRef?.value || '';
-        const refNum = spRef.match(/:Q:(\d+):/)?.[1] || spRef.match(/:(\d+):?$/)?.[1];
-        if (!refNum || !numericIds.has(refNum)) return;
-
-        const dest = call.DestinationDisplay?.[0]?.value
-          || vj.DestinationName?.[0]?.value || '';
-
-        // ✅ FIX 3 : filtre terminus assoupli — comparaison normalisée
-        if (terminus && dest && !loosMatch(terminus, dest)) return;
-
-        const expectedTime = call.ExpectedDepartureTime || call.ExpectedArrivalTime
-          || call.AimedDepartureTime || call.AimedArrivalTime;
-        const aimedTime = call.AimedDepartureTime || call.AimedArrivalTime;
+  function parseSiri(data,spIds,terminus) {
+    const frame=data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
+    const journeys=frame?.EstimatedVehicleJourney||[];
+    const now=Date.now();
+    const numericIds=new Set(spIds.map(extractNumericId).filter(Boolean));
+    const result=[];
+    journeys.forEach(vj=>{
+      const calls=vj.EstimatedCalls?.EstimatedCall||[];
+      calls.forEach(call=>{
+        const spRef=call.StopPointRef?.value||'';
+        const refNum=spRef.match(/:Q:(\d+):/)?.[1]||spRef.match(/:(\d+):?$/)?.[1];
+        if (!refNum||!numericIds.has(refNum)) return;
+        const dest=call.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
+        if (terminus&&dest&&!loosMatch(terminus,dest)) return;
+        const expectedTime=call.ExpectedDepartureTime||call.ExpectedArrivalTime||call.AimedDepartureTime||call.AimedArrivalTime;
+        const aimedTime=call.AimedDepartureTime||call.AimedArrivalTime;
         if (!expectedTime) return;
-        if (new Date(expectedTime).getTime() < now - 60000) return;
-
-        result.push({
-          expectedTime,
-          aimedTime,
-          destination: dest || terminus,
-          vehicleAtStop: call.VehicleAtStop === true,
-          cancelled: call.DepartureStatus==='cancelled' || call.ArrivalStatus==='cancelled',
-          realtime: true
-        });
+        if (new Date(expectedTime).getTime()<now-60000) return;
+        result.push({expectedTime,aimedTime,destination:dest||terminus,vehicleAtStop:call.VehicleAtStop===true,cancelled:call.DepartureStatus==='cancelled'||call.ArrivalStatus==='cancelled',realtime:true});
       });
     });
-
-    result.sort((a,b) => new Date(a.expectedTime) - new Date(b.expectedTime));
+    result.sort((a,b)=>new Date(a.expectedTime)-new Date(b.expectedTime));
     return result;
   }
 
-  // Parse stop-monitoring SIRI (métro, RER, Transilien)
-  function parseStopMonitoring(data, terminus) {
-    const visits = data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
-    const now = Date.now();
-    const result = [];
-
-    visits.forEach(v => {
-      const vj   = v.MonitoredVehicleJourney || {};
-      const call = vj.MonitoredCall || {};
-
-      const dest = call.DestinationDisplay?.[0]?.value
-        || vj.DestinationName?.[0]?.value
-        || vj.DirectionName?.[0]?.value || '';
-
-      // Filtre terminus assoupli
-      if (terminus && dest && !loosMatch(terminus, dest)) return;
-
-      const expectedTime = call.ExpectedDepartureTime || call.AimedDepartureTime
-        || call.ExpectedArrivalTime || call.AimedArrivalTime;
-      const aimedTime = call.AimedDepartureTime || call.AimedArrivalTime;
-
+  function parseStopMonitoring(data,terminus) {
+    const visits=data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
+    const now=Date.now();
+    const result=[];
+    visits.forEach(v=>{
+      const vj=v.MonitoredVehicleJourney||{}, call=vj.MonitoredCall||{};
+      const dest=call.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||vj.DirectionName?.[0]?.value||'';
+      if (terminus&&dest&&!loosMatch(terminus,dest)) return;
+      const expectedTime=call.ExpectedDepartureTime||call.AimedDepartureTime||call.ExpectedArrivalTime||call.AimedArrivalTime;
+      const aimedTime=call.AimedDepartureTime||call.AimedArrivalTime;
       if (!expectedTime) return;
-      if (new Date(expectedTime).getTime() < now - 60000) return;
-
-      result.push({
-        expectedTime,
-        aimedTime,
-        destination: dest || terminus,
-        vehicleAtStop: call.VehicleAtStop === true,
-        cancelled: call.DepartureStatus === 'cancelled' || call.ArrivalStatus === 'cancelled',
-        realtime: true
-      });
+      if (new Date(expectedTime).getTime()<now-60000) return;
+      result.push({expectedTime,aimedTime,destination:dest||terminus,vehicleAtStop:call.VehicleAtStop===true,cancelled:call.DepartureStatus==='cancelled'||call.ArrivalStatus==='cancelled',realtime:true});
     });
-
-    result.sort((a,b) => new Date(a.expectedTime) - new Date(b.expectedTime));
+    result.sort((a,b)=>new Date(a.expectedTime)-new Date(b.expectedTime));
     return result;
   }
 
-  // Parse departures Navitia
-  function parseNavitia(deps, terminus) {
-    return deps.map(dep => {
-      const sdt  = dep.stop_date_time || {};
-      const info = dep.display_informations || {};
-      const dest = info.direction || info.headsign || terminus;
-      const expectedTime = navitiaToISO(sdt.departure_date_time || sdt.arrival_date_time);
-      return { expectedTime, aimedTime: null, destination: dest, vehicleAtStop: false, cancelled: false, realtime: false };
-    }).filter(d => d.expectedTime);
+  function parseNavitia(deps,terminus) {
+    return deps.map(dep=>{
+      const sdt=dep.stop_date_time||{}, info=dep.display_informations||{};
+      const dest=info.direction||info.headsign||terminus;
+      const expectedTime=navitiaToISO(sdt.departure_date_time||sdt.arrival_date_time);
+      return {expectedTime,aimedTime:null,destination:dest,vehicleAtStop:false,cancelled:false,realtime:false};
+    }).filter(d=>d.expectedTime);
   }
 
-  // Normalisation pour comparer deux noms de terminus
-  function normalize(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
-  function loosMatch(a, b) {
-    const na = normalize(a), nb = normalize(b);
-    if (na===nb) return true;
-    // Contient l'un l'autre (pour "Mairie de Montreuil" vs "Mairie de Montreuil (Montreuil)")
-    if (na.includes(nb) || nb.includes(na)) return true;
-    // Premier mot significatif commun (≥4 chars)
-    const wa = na.split(/\s+/).find(w=>w.length>=4);
-    const wb = nb.split(/\s+/).find(w=>w.length>=4);
-    return wa && wb && (wa===wb);
-  }
-
-  function navitiaToISO(str) {
-    if (!str) return null;
-    return `${str.slice(0,4)}-${str.slice(4,6)}-${str.slice(6,8)}T${str.slice(9,11)}:${str.slice(11,13)}:${str.slice(13,15)}`;
-  }
-
-  // ── Rendu des départs ────────────────────────────────────────────────────────
-  function renderDepartures(el, departures, terminus, isRealtime) {
+  function renderDepartures(el,departures,terminus,isRealtime,disruptions=[]) {
     el.innerHTML='';
+
+    // ── Perturbations de la ligne (collapsible) ──
+    if (disruptions.length) {
+      renderDisruptionsBlock(disruptions, el);
+    }
 
     const header=document.createElement('div');
     header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;';
@@ -729,19 +810,19 @@
 
     const card=document.createElement('div'); card.className='card';
     departures.forEach(dep=>{
-      const expected = new Date(dep.expectedTime);
-      const aimed    = dep.aimedTime ? new Date(dep.aimedTime) : null;
-      const timeStr  = formatTime(expected);
-      const waitMin  = Math.round((expected - Date.now()) / 60000);
+      const expected=new Date(dep.expectedTime);
+      const aimed=dep.aimedTime?new Date(dep.aimedTime):null;
+      const timeStr=formatTime(expected);
+      const waitMin=Math.round((expected-Date.now())/60000);
       let waitLabel='', waitClass='';
-      if (dep.vehicleAtStop || waitMin<=0) { waitLabel='À quai'; waitClass='quai'; }
+      if (dep.vehicleAtStop||waitMin<=0) { waitLabel='À quai'; waitClass='quai'; }
       else if (waitMin<=1) { waitLabel='1 min'; waitClass='soon'; }
       else { waitLabel=waitMin+' min'; waitClass=waitMin<=4?'soon':''; }
 
       let delayBadge='';
-      if (aimed && dep.realtime) {
+      if (aimed&&dep.realtime) {
         const d=Math.round((expected-aimed)/60000);
-        if (d>0)      delayBadge=`<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">+${d} min</span>`;
+        if (d>0) delayBadge=`<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">+${d} min</span>`;
         else if (d<0) delayBadge=`<span style="font-size:11px;color:#15803d;font-weight:600;margin-left:4px;">${d} min</span>`;
       }
       const cancelBadge=dep.cancelled?'<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:4px;">Supprimé</span>':'';
