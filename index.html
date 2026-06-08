@@ -3,662 +3,690 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Transports IDF — 3 Arrêts</title>
+  <title>IDF Live — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #f2f2f7; --surface: #fff; --surface2: #f2f2f7;
-      --border: rgba(60,60,67,.12); --sep: rgba(60,60,67,.1);
-      --text: #000; --text2: #3c3c43; --muted: rgba(60,60,67,.55);
-      --accent: #007aff; --accent-bg: rgba(0,122,255,.08);
-      --success: #34c759; --success-bg: rgba(52,199,89,.1);
-      --warning: #ff9500; --warning-bg: rgba(255,149,0,.1);
-      --danger: #ff3b30; --danger-bg: rgba(255,59,48,.1);
-      --r: 18px; --r-sm: 12px; --r-xs: 8px;
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#0d0e11;--grid:#161820;--panel:#14151a;--panel-border:rgba(255,255,255,.07);
+      --panel-active:rgba(255,255,255,.13);--text:#e8e5de;--muted:#52555e;--muted2:#2a2c33;
+      --accent:#00e5a0;--accent-dim:rgba(0,229,160,.1);--accent2:#4f8ef7;
+      --warn:#ffb347;--danger:#ff5566;--success:#00e5a0;
+      --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+      --r:14px;--shadow:0 8px 40px rgba(0,0,0,.5);
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #000; --surface: #1c1c1e; --surface2: #2c2c2e;
-        --border: rgba(255,255,255,.1); --sep: rgba(255,255,255,.08);
-        --text: #fff; --text2: #ebebf5; --muted: rgba(235,235,245,.55);
-        --accent: #0a84ff; --accent-bg: rgba(10,132,255,.12);
-        --success: #30d158; --success-bg: rgba(48,209,88,.12);
-        --warning: #ff9f0a; --warning-bg: rgba(255,159,10,.12);
-        --danger: #ff453a; --danger-bg: rgba(255,69,58,.12);
-      }
-    }
-    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    html,body{width:100%;height:100%;overflow:hidden;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);position:relative;}
 
-    .header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px; background: rgba(255,255,255,.8);
-      backdrop-filter: blur(20px); border-bottom: 0.5px solid var(--border);
-      position: sticky; top: 0; z-index: 50;
+    /* ── Grid dots background ── */
+    body::before{
+      content:'';position:fixed;inset:0;
+      background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+      background-size:28px 28px;pointer-events:none;z-index:0;
     }
-    @media (prefers-color-scheme: dark) { .header { background: rgba(28,28,30,.9); } }
-    .header-title { font-size: 17px; font-weight: 600; }
-    .header-clock { font-size: 14px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-    .grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 12px; padding: 14px; min-height: calc(100vh - 53px);
+    /* ── Topbar ── */
+    .topbar{
+      position:fixed;top:0;left:0;right:0;height:52px;z-index:200;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 20px;
+      background:rgba(13,14,17,.85);backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--panel-border);
     }
-    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    .topbar-brand{display:flex;align-items:center;gap:10px;}
+    .topbar-logo{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--accent);}
+    .topbar-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;}
+    .topbar-right{display:flex;align-items:center;gap:10px;}
+    .topbar-clock{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.05em;}
 
-    .panel {
-      background: rgba(255,255,255,.75); backdrop-filter: blur(20px);
-      border: 0.5px solid rgba(255,255,255,.6); border-radius: 22px;
-      overflow: hidden; display: flex; flex-direction: column;
-      box-shadow: 0 4px 20px rgba(0,0,0,.06); min-height: 500px;
+    .btn-add{
+      display:flex;align-items:center;gap:6px;
+      height:32px;padding:0 14px;border-radius:8px;
+      font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.04em;
+      cursor:pointer;border:1px solid var(--accent);
+      background:var(--accent-dim);color:var(--accent);
+      transition:background .15s,transform .1s;
     }
-    @media (prefers-color-scheme: dark) { .panel { background: rgba(28,28,30,.85); border-color: rgba(255,255,255,.08); } }
+    .btn-add:hover{background:rgba(0,229,160,.18);}
+    .btn-add:active{transform:scale(.97);}
 
-    .panel-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 14px 10px; border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
+    /* ── Canvas ── */
+    #canvas{
+      position:fixed;top:52px;left:0;right:0;bottom:0;z-index:1;
+      overflow:hidden;
     }
-    .panel-num { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-    .panel-actions { display: flex; align-items: center; gap: 6px; }
-    .panel-reset {
-      background: none; border: none; cursor: pointer; color: var(--muted);
-      font-size: 15px; padding: 2px 5px; border-radius: 6px; line-height: 1;
-      transition: color .15s, background .15s;
-    }
-    .panel-reset:hover { color: var(--danger); background: var(--danger-bg); }
-    .panel-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-    .step-search {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 20px 14px; gap: 12px;
+    /* ── Panel (widget) ── */
+    .widget{
+      position:absolute;
+      width:300px;min-width:240px;min-height:200px;
+      background:var(--panel);
+      border:1px solid var(--panel-border);
+      border-radius:var(--r);
+      display:flex;flex-direction:column;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+      transition:border-color .15s,box-shadow .15s;
+      user-select:none;
     }
-    .step-search-icon { font-size: 32px; opacity: .25; }
-    .step-search-label { font-size: 13px; color: var(--muted); }
-    .search-field { position: relative; width: 100%; }
-    .search-field input {
-      width: 100%; height: 38px; padding: 0 36px 0 12px;
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 10px; color: var(--text); font-family: inherit; font-size: 13px;
-      outline: none; transition: border-color .15s;
+    .widget.dragging{
+      border-color:var(--panel-active);
+      box-shadow:0 20px 60px rgba(0,0,0,.7);
+      z-index:100;
+      opacity:.95;
     }
-    .search-field input:focus { border-color: var(--accent); }
-    .search-field i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
-    .ac-drop {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 10px; z-index: 100; overflow: hidden;
-      box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 200px; overflow-y: auto;
-    }
-    .ac-drop-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 0.5px solid var(--sep); transition: background .1s; }
-    .ac-drop-item:last-child { border-bottom: none; }
-    .ac-drop-item:hover, .ac-drop-item.active { background: var(--accent-bg); }
-    .ac-drop-name { font-weight: 500; }
-    .ac-drop-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .widget.focused{border-color:rgba(255,255,255,.15);}
 
-    .step-back {
-      display: flex; align-items: center; gap: 6px;
-      padding: 9px 14px; font-size: 12px; font-weight: 500; color: var(--accent);
-      cursor: pointer; flex-shrink: 0; border-bottom: 0.5px solid var(--sep);
-      transition: background .1s;
+    /* ── Widget header (drag handle) ── */
+    .w-header{
+      display:flex;align-items:center;gap:8px;
+      padding:9px 12px 8px;
+      border-bottom:1px solid var(--panel-border);
+      flex-shrink:0;cursor:grab;
     }
-    .step-back:hover { background: var(--accent-bg); }
+    .w-header:active{cursor:grabbing;}
+    .w-handle{display:flex;gap:3px;align-items:center;flex-shrink:0;}
+    .w-handle span{display:block;width:3px;height:3px;border-radius:50%;background:var(--muted2);}
+    .w-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.07em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .w-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+    .w-btn{
+      background:none;border:none;cursor:pointer;
+      color:var(--muted);font-size:13px;width:22px;height:22px;
+      border-radius:5px;display:flex;align-items:center;justify-content:center;
+      transition:color .12s,background .12s;line-height:1;
+    }
+    .w-btn:hover{color:var(--text);background:rgba(255,255,255,.06);}
+    .w-btn.close:hover{color:var(--danger);background:rgba(255,85,102,.1);}
 
-    /* Onglets Aller / Retour */
-    .dir-tabs {
-      display: flex; gap: 8px; padding: 8px 8px 4px; flex-shrink: 0;
-    }
-    .dir-tab {
-      flex: 1; height: 34px; border-radius: 8px; font-family: inherit;
-      font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border);
-      background: var(--surface); color: var(--muted); transition: all .15s;
-    }
-    .dir-tab.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
-    .dir-tab:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+    /* ── Widget body ── */
+    .w-body{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 
-    .item-list { flex: 1; overflow-y: auto; padding: 6px; }
-    .item-btn {
-      display: flex; align-items: center; gap: 8px;
-      width: 100%; padding: 9px 10px; margin-bottom: 3px;
-      background: none; border: 0.5px solid var(--border);
-      border-radius: 10px; cursor: pointer; color: var(--text);
-      font-family: inherit; font-size: 12px; font-weight: 500;
-      text-align: left; transition: background .1s, border-color .1s;
+    /* ── Resize handle ── */
+    .w-resize{
+      position:absolute;bottom:0;right:0;
+      width:16px;height:16px;cursor:se-resize;
+      display:flex;align-items:flex-end;justify-content:flex-end;
+      padding:3px;opacity:.35;transition:opacity .15s;
     }
-    .item-btn:hover { background: var(--surface2); }
-    .item-btn:last-child { margin-bottom: 0; }
-    .item-btn-sub { color: var(--muted); font-size: 11px; font-weight: 400; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .item-btn-arrow { color: var(--muted); font-size: 12px; margin-left: auto; flex-shrink: 0; }
+    .w-resize:hover{opacity:.7;}
+    .w-resize svg{width:8px;height:8px;}
 
-    .dep-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .dep-subheader {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 14px; border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
+    /* ── Search step ── */
+    .step-search{
+      flex:1;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      padding:16px;gap:10px;
     }
-    .dep-direction { font-size: 12px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fresh { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 99px; flex-shrink: 0; }
-    .fresh.rt { background: var(--success-bg); color: var(--success); }
-    .fresh.th { background: var(--warning-bg); color: var(--warning); }
-
-    .dep-list { flex: 1; overflow-y: auto; }
-    .dep-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px; border-bottom: 0.5px solid var(--sep); gap: 8px;
+    .step-icon{font-size:26px;opacity:.2;}
+    .step-label{font-size:11px;color:var(--muted);font-family:var(--mono);}
+    .search-wrap{position:relative;width:100%;}
+    .search-wrap input{
+      width:100%;height:32px;padding:0 10px;
+      background:var(--muted2);border:1px solid transparent;
+      border-radius:8px;color:var(--text);
+      font-family:var(--mono);font-size:11px;outline:none;
+      transition:border-color .15s;
     }
-    .dep-row:last-child { border-bottom: none; }
-    .dep-dest { font-size: 12px; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .dep-right { text-align: right; flex-shrink: 0; }
-    .dep-wait { font-size: 20px; font-weight: 700; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
-    .dep-wait.quai { color: var(--accent); }
-    .dep-wait.soon { color: var(--success); }
-    .dep-time { font-size: 11px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
-    .dep-delay { font-size: 10px; font-weight: 600; }
-    .dep-delay.late  { color: var(--danger); }
-    .dep-delay.early { color: var(--success); }
-
-    .dep-footer {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 14px; border-top: 0.5px solid var(--sep); flex-shrink: 0;
+    .search-wrap input:focus{border-color:var(--accent);}
+    .ac-drop{
+      position:absolute;top:calc(100% + 4px);left:0;right:0;
+      background:#1a1c23;border:1px solid var(--panel-active);
+      border-radius:8px;z-index:300;overflow:hidden;
+      box-shadow:0 10px 40px rgba(0,0,0,.6);
+      max-height:180px;overflow-y:auto;
     }
-    .dep-footer-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; animation: pulse 2s infinite; }
-    .dep-footer-dot.rt { background: var(--success); }
-    .dep-footer-dot.th { background: var(--warning); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .dep-footer-progress { flex: 1; height: 2px; background: var(--sep); border-radius: 99px; overflow: hidden; }
-    .dep-footer-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 1s linear; }
-    .dep-footer-cd { font-size: 11px; color: var(--muted); min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
-    .dep-footer-btn { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; padding: 2px 4px; border-radius: 5px; transition: background .1s; }
-    .dep-footer-btn:hover { background: var(--accent-bg); }
+    .ac-item{
+      padding:8px 10px;cursor:pointer;font-size:11px;font-family:var(--mono);
+      border-bottom:1px solid var(--panel-border);transition:background .1s;
+    }
+    .ac-item:last-child{border-bottom:none;}
+    .ac-item:hover,.ac-item.active{background:var(--accent-dim);color:var(--accent);}
+    .ac-name{font-weight:700;}
+    .ac-sub{font-size:10px;color:var(--muted);margin-top:2px;}
 
-    .panel-loader { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; }
-    .spinner { width: 16px; height: 16px; border: 2px solid var(--sep); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .panel-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 12px; padding: 20px; text-align: center; }
-    .panel-empty i { font-size: 28px; opacity: .4; }
+    /* ── Step back ── */
+    .step-back{
+      display:flex;align-items:center;gap:6px;
+      padding:7px 12px;font-size:10px;font-family:var(--mono);
+      color:var(--accent2);cursor:pointer;flex-shrink:0;
+      border-bottom:1px solid var(--panel-border);
+      transition:background .1s;
+    }
+    .step-back:hover{background:rgba(79,142,247,.08);}
+
+    /* ── Direction tabs ── */
+    .dir-tabs{display:flex;gap:6px;padding:6px 8px 2px;flex-shrink:0;}
+    .dir-tab{
+      flex:1;height:28px;border-radius:6px;font-family:var(--mono);
+      font-size:10px;font-weight:700;cursor:pointer;
+      border:1px solid var(--muted2);background:none;color:var(--muted);
+      transition:all .15s;
+    }
+    .dir-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+
+    /* ── Item list ── */
+    .item-list{flex:1;overflow-y:auto;padding:4px;}
+    .item-list::-webkit-scrollbar{width:3px;}
+    .item-list::-webkit-scrollbar-track{background:transparent;}
+    .item-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:3px;}
+    .item-btn{
+      display:flex;align-items:center;gap:8px;
+      width:100%;padding:7px 8px;margin-bottom:2px;
+      background:none;border:1px solid transparent;
+      border-radius:7px;cursor:pointer;color:var(--text);
+      font-family:var(--mono);font-size:10px;text-align:left;
+      transition:background .1s,border-color .1s;
+    }
+    .item-btn:hover{background:rgba(255,255,255,.04);border-color:var(--panel-active);}
+    .item-sub{color:var(--muted);font-size:9px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .item-arr{color:var(--muted);margin-left:auto;flex-shrink:0;font-size:10px;}
+
+    /* ── Group label ── */
+    .group-label{
+      font-family:var(--mono);font-size:9px;font-weight:700;
+      color:var(--muted);letter-spacing:.08em;
+      padding:8px 8px 2px;text-transform:uppercase;
+    }
+
+    /* ── Departures ── */
+    .dep-view{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .dep-subheader{
+      display:flex;align-items:center;gap:8px;
+      padding:6px 12px;border-bottom:1px solid var(--panel-border);flex-shrink:0;
+    }
+    .dep-dir{font-family:var(--mono);font-size:10px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .fresh{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px;flex-shrink:0;}
+    .fresh.rt{background:rgba(0,229,160,.12);color:var(--accent);}
+    .fresh.th{background:rgba(255,179,71,.1);color:var(--warn);}
+    .dep-list{flex:1;overflow-y:auto;}
+    .dep-list::-webkit-scrollbar{width:3px;}
+    .dep-list::-webkit-scrollbar-thumb{background:var(--muted2);}
+    .dep-row{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:8px 12px;border-bottom:1px solid var(--panel-border);gap:8px;
+    }
+    .dep-row:last-child{border-bottom:none;}
+    .dep-dest{font-family:var(--mono);font-size:10px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .dep-chip{
+      font-family:var(--mono);font-size:12px;font-weight:700;
+      padding:2px 8px;border-radius:5px;
+      background:var(--muted2);color:var(--text);white-space:nowrap;flex-shrink:0;
+    }
+    .dep-chip.quai{background:var(--accent-dim);color:var(--accent);}
+    .dep-chip.soon{background:rgba(0,229,160,.08);color:var(--accent);}
+    .dep-chip.late{background:rgba(255,85,102,.1);color:var(--danger);}
+    .dep-delay{font-size:9px;font-family:var(--mono);margin-right:2px;}
+    .dep-delay.pos{color:var(--danger);}
+    .dep-delay.neg{color:var(--accent);}
+    /* Footer */
+    .dep-footer{
+      display:flex;align-items:center;gap:8px;
+      padding:5px 12px;border-top:1px solid var(--panel-border);flex-shrink:0;
+    }
+    .rt-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;animation:pulse 2s infinite;}
+    .rt-dot.ok{background:var(--accent);}
+    .rt-dot.warn{background:var(--warn);}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .fp-bar-wrap{flex:1;height:2px;background:var(--muted2);border-radius:2px;overflow:hidden;}
+    .fp-bar{height:100%;background:var(--accent2);border-radius:2px;transition:width 1s linear;}
+    .fp-cd{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:20px;text-align:right;}
+    .fp-refresh{
+      background:none;border:none;cursor:pointer;
+      color:var(--muted);font-size:11px;padding:2px 4px;
+      border-radius:4px;transition:color .12s;
+    }
+    .fp-refresh:hover{color:var(--accent);}
+
+    /* ── States ── */
+    .loader{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:10px;font-family:var(--mono);}
+    .spinner{width:14px;height:14px;border:2px solid var(--muted2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:10px;font-family:var(--mono);padding:16px;text-align:center;}
+
+    /* ── Floating add hint ── */
+    .fab-hint{
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      font-family:var(--mono);font-size:10px;color:var(--muted);
+      background:rgba(20,21,26,.9);border:1px solid var(--panel-border);
+      padding:6px 14px;border-radius:20px;z-index:10;
+      pointer-events:none;opacity:0;transition:opacity .3s;
+    }
+    .fab-hint.show{opacity:1;}
   </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-title">🚇 Transports IDF</div>
-  <div class="header-clock" id="clock">--:--:--</div>
+<div class="topbar">
+  <div class="topbar-brand">
+    <div>
+      <div class="topbar-logo">IDF ◆ LIVE</div>
+      <div class="topbar-sub">MONITEUR TEMPS RÉEL</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-clock" id="clock">--:--:--</div>
+    <button class="btn-add" id="btn-add">+ Ajouter un panneau</button>
+  </div>
 </div>
-<div class="grid" id="grid"></div>
+
+<div id="canvas"></div>
+<div class="fab-hint" id="fab-hint">Déplacez les panneaux où vous le souhaitez</div>
 
 <script>
-setInterval(()=>{ document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); },1000);
+// ── Clock ─────────────────────────────────────────────────────────────────────
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),1000);
 document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-const PROXY       = '/api/prim';
-const REFRESH_SEC = 20;
+const PROXY='/api/prim', REFRESH=20;
+async function api(ep,p={}){const qs=new URLSearchParams({endpoint:ep,...p}).toString();const r=await fetch(PROXY+'?'+qs);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 
-async function api(endpoint, params={}) {
-  const qs=new URLSearchParams({endpoint,...params}).toString();
-  const r=await fetch(PROXY+'?'+qs);
-  if (!r.ok) throw new Error('HTTP '+r.status);
-  return r.json();
-}
-
-function textColor(hex) {
-  hex=(hex||'').replace('#',''); if(hex.length!==6)return'#fff';
-  const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
-  return(r*299+g*587+b*114)/1000>128?'#000':'#fff';
-}
-
-function lineIcon(info,size=24) {
-  const code=String(info.code||info.label||'?');
-  const mode=(info.commercial_mode||'').toLowerCase();
-  const bg=info.color?'#'+info.color.replace('#',''):'#888';
-  const fg=textColor(bg);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function tc(hex){hex=(hex||'').replace('#','');if(hex.length!==6)return'#fff';const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);return(r*299+g*587+b*114)/1000>128?'#000':'#fff';}
+function lineIcon(info,size=20){
+  const code=String(info.code||'?'),mode=(info.commercial_mode||'').toLowerCase();
+  const bg=info.color?'#'+info.color.replace('#',''):'#444';const fg=tc(bg);
   const cx=size/2,cy=size/2;
-  const fs=code.length<=2?Math.round(size*.44):code.length===3?Math.round(size*.32):Math.round(size*.26);
-  const rv=Math.round(size*.2);
+  const fs=code.length<=2?Math.round(size*.46):code.length===3?Math.round(size*.34):Math.round(size*.27);
   let shape,w=size;
-  if (mode.includes('métro')||mode.includes('metro')) {
-    shape=`<circle cx="${cx}" cy="${cy}" r="${cx-1}" fill="${bg}"/>`;
-  } else if (mode.includes('rer')||mode.includes('transilien')||mode.includes('train')) {
-    shape=`<rect x="1" y="1" width="${size-2}" height="${size-2}" rx="${rv}" fill="${bg}"/>`;
-  } else if (mode.includes('tram')) {
-    shape=`<polygon points="${cx},1 ${size-1},${cy} ${cx},${size-1} 1,${cy}" fill="${bg}"/>`;
-  } else {
-    const cw=fs*.65; w=Math.max(size,Math.round(cw*code.length+size*.5));
-    shape=`<rect x="1" y="1" width="${w-2}" height="${size-2}" rx="${rv}" fill="${bg}"/>`;
-    return`<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
-  }
-  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><title>${code}</title>${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-size="${fs}" font-weight="600" fill="${fg}">${code}</text></svg>`;
+  if(mode.includes('métro')||mode.includes('metro')){shape=`<circle cx="${cx}" cy="${cy}" r="${cx-.5}" fill="${bg}"/>`;}
+  else if(mode.includes('rer')||mode.includes('transilien')||mode.includes('train')){const rx=Math.round(size*.22);shape=`<rect x=".5" y=".5" width="${size-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;}
+  else if(mode.includes('tram')){shape=`<polygon points="${cx},.5 ${size-.5},${cy} ${cx},${size-.5} .5,${cy}" fill="${bg}"/>`;}
+  else{const cw=fs*.65;w=Math.max(size,Math.round(cw*code.length+size*.5));const rx=Math.round(size*.22);shape=`<rect x=".5" y=".5" width="${w-1}" height="${size-1}" rx="${rx}" fill="${bg}"/>`;
+    return`<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;">${shape}<text x="${w/2}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Space Mono,monospace" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;}
+  return`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;">${shape}<text x="${cx}" y="${cy}" dominant-baseline="central" text-anchor="middle" font-family="Space Mono,monospace" font-size="${fs}" font-weight="700" fill="${fg}">${code}</text></svg>`;
 }
+function ft(d){return d?d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'--:--';}
+function toLineRef(id,codes){if(codes){const s=codes.find(c=>c.type==='source');if(s){const m=s.value.match(/Line:(C[\w-]+)/);if(m)return`STIF:Line::${m[1]}:`;}}const m=id.match(/IDFM:(C[\w-]+)/);return m?`STIF:Line::${m[1]}:`:null;}
+function numId(id){const m=(id||'').match(/:(\d+)$/);return m?m[1]:null;}
+function monRef(spId){const m=(spId||'').match(/:(\d+)$/);return m?`STIF:StopPoint:Q:${m[1]}:`:null;}
+function nm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function lm(a,b){const na=nm(a),nb=nm(b);if(na===nb||na.includes(nb)||nb.includes(na))return true;const wa=na.split(/\s+/).find(w=>w.length>=4),wb=nb.split(/\s+/).find(w=>w.length>=4);return!!(wa&&wb&&wa===wb);}
+function n2i(s){if(!s)return null;return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`;}
+function strategy(mode){const m=(mode||'').toLowerCase();return(m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'sm':'et';}
 
-function formatTime(d){return d?d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'--:--';}
-function toLineRef(lineId,codes){
-  if(codes){const s=codes.find(c=>c.type==='source');if(s){const m=s.value.match(/Line:(C[\w-]+)/);if(m)return`STIF:Line::${m[1]}:`;}}
-  const m=lineId.match(/IDFM:(C[\w-]+)/);return m?`STIF:Line::${m[1]}:`:null;
-}
-function extractNumId(id){const m=(id||'').match(/:(\d+)$/);return m?m[1]:null;}
-function toMonRef(spId){const m=(spId||'').match(/:(\d+)$/);return m?`STIF:StopPoint:Q:${m[1]}:`:null;}
-function norm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
-function lMatch(a,b){
-  const na=norm(a),nb=norm(b);
-  if(na===nb||na.includes(nb)||nb.includes(na))return true;
-  const wa=na.split(/\s+/).find(w=>w.length>=4),wb=nb.split(/\s+/).find(w=>w.length>=4);
-  return!!(wa&&wb&&wa===wb);
-}
-function n2iso(s){if(!s)return null;return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}`;}
-function getStrategy(mode){
-  const m=(mode||'').toLowerCase();
-  return(m.includes('métro')||m.includes('metro')||m.includes('rer')||m.includes('transilien')||m.includes('train'))?'stop-monitoring':'estimated-timetable';
-}
+// Paris terminus detection
+const PARIS_KW=['paris','austerlitz','gare de lyon','gare du nord','saint lazare','lazare','montparnasse','invalides','javel','orsay','bercy','bibliotheque','massy','issy','la defense','pont de rungis','roissy','cdg'];
+function isParisStop(name){const n=nm(name);return PARIS_KW.some(k=>n.includes(k));}
 
-function parseSM(data,terminus){
-  const visits=data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
+// ── SIRI parsers ──────────────────────────────────────────────────────────────
+function parseSM(data,term){
+  const v=data?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit||[];
   const now=Date.now(),res=[];
-  visits.forEach(v=>{
-    const vj=v.MonitoredVehicleJourney||{},c=vj.MonitoredCall||{};
-    const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||vj.DirectionName?.[0]?.value||'';
-    if(terminus&&dest&&!lMatch(terminus,dest))return;
+  v.forEach(v=>{const vj=v.MonitoredVehicleJourney||{},c=vj.MonitoredCall||{};
+    const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
+    if(term&&dest&&!lm(term,dest))return;
     const et=c.ExpectedDepartureTime||c.AimedDepartureTime||c.ExpectedArrivalTime||c.AimedArrivalTime;
     const at=c.AimedDepartureTime||c.AimedArrivalTime;
-    if(!et||new Date(et).getTime()<now-60000)return;
-    res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
+    if(!et||new Date(et)<now-60000)return;
+    res.push({et,at,dest:dest||term,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
   });
   return res.sort((a,b)=>new Date(a.et)-new Date(b.et));
 }
-
-function parseET(data,spIds,terminus){
-  const delivery=data?.Siri?.ServiceDelivery??data?.ServiceDelivery;
-  const frame=delivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
-  const journeys=frame?.EstimatedVehicleJourney||[];
-  const now=Date.now(),nums=new Set(spIds.map(extractNumId).filter(Boolean)),res=[];
-  journeys.forEach(vj=>{
-    (vj.EstimatedCalls?.EstimatedCall||[]).forEach(c=>{
-      const sr=c.StopPointRef?.value||'';
-      const rn=sr.match(/:Q:(\d+):/)?.[1]||sr.match(/:(\d+):?$/)?.[1];
-      if(!rn||!nums.has(rn))return;
-      const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
-      if(terminus&&dest&&!lMatch(terminus,dest))return;
-      const et=c.ExpectedDepartureTime||c.ExpectedArrivalTime||c.AimedDepartureTime||c.AimedArrivalTime;
-      const at=c.AimedDepartureTime||c.AimedArrivalTime;
-      if(!et||new Date(et).getTime()<now-60000)return;
-      res.push({et,at,dest:dest||terminus,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
-    });
-  });
+function parseET(data,spIds,term){
+  const f=data?.Siri?.ServiceDelivery?.EstimatedTimetableDelivery?.[0]?.EstimatedJourneyVersionFrame?.[0];
+  const jj=f?.EstimatedVehicleJourney||[];
+  const now=Date.now(),nums=new Set(spIds.map(numId).filter(Boolean)),res=[];
+  jj.forEach(vj=>{(vj.EstimatedCalls?.EstimatedCall||[]).forEach(c=>{
+    const sr=c.StopPointRef?.value||'';
+    const rn=sr.match(/:Q:(\d+):/)?.[1]||sr.match(/:(\d+):?$/)?.[1];
+    if(!rn||!nums.has(rn))return;
+    const dest=c.DestinationDisplay?.[0]?.value||vj.DestinationName?.[0]?.value||'';
+    if(term&&dest&&!lm(term,dest))return;
+    const et=c.ExpectedDepartureTime||c.ExpectedArrivalTime||c.AimedDepartureTime||c.AimedArrivalTime;
+    const at=c.AimedDepartureTime||c.AimedArrivalTime;
+    if(!et||new Date(et)<now-60000)return;
+    res.push({et,at,dest:dest||term,atStop:c.VehicleAtStop===true,cancelled:c.DepartureStatus==='cancelled',rt:true});
+  });});
   return res.sort((a,b)=>new Date(a.et)-new Date(b.et));
 }
-
-function parseNAV(deps,terminus){
-  return deps.map(dep=>{
-    const sdt=dep.stop_date_time||{},info=dep.display_informations||{};
-    const et=n2iso(sdt.departure_date_time||sdt.arrival_date_time);
-    return{et,at:null,dest:info.direction||info.headsign||terminus,atStop:false,cancelled:false,rt:false};
-  }).filter(d=>d.et&&new Date(d.et).getTime()>=Date.now()-60000);
+function parseNAV(deps,term){
+  return deps.map(dep=>{const sdt=dep.stop_date_time||{},info=dep.display_informations||{};
+    const et=n2i(sdt.departure_date_time||sdt.arrival_date_time);
+    return{et,at:null,dest:info.direction||info.headsign||term,atStop:false,cancelled:false,rt:false};
+  }).filter(d=>d.et&&new Date(d.et)>=Date.now()-60000);
 }
 
-// ── Panel ─────────────────────────────────────────────────────────────────────
-class Panel {
-  constructor(id) {
-    this.id=id; this.el=null;
+// ── Drag & Resize ─────────────────────────────────────────────────────────────
+let zTop=10;
+const canvas=document.getElementById('canvas');
+
+function makeDraggable(widget){
+  const handle=widget.querySelector('.w-header');
+  let ox,oy,isDragging=false;
+  handle.addEventListener('mousedown',e=>{
+    if(e.target.closest('.w-actions'))return;
+    isDragging=true; widget.classList.add('dragging');
+    widget.style.zIndex=++zTop;
+    ox=e.clientX-widget.offsetLeft; oy=e.clientY-widget.offsetTop;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    let nx=e.clientX-ox, ny=e.clientY-oy;
+    const cw=canvas.clientWidth, ch=canvas.clientHeight;
+    nx=Math.max(0,Math.min(nx,cw-widget.offsetWidth));
+    ny=Math.max(0,Math.min(ny,ch-widget.offsetHeight));
+    widget.style.left=nx+'px'; widget.style.top=ny+'px';
+  });
+  document.addEventListener('mouseup',()=>{if(isDragging){isDragging=false;widget.classList.remove('dragging');}});
+  // Touch support
+  handle.addEventListener('touchstart',e=>{
+    if(e.target.closest('.w-actions'))return;
+    const t=e.touches[0];
+    isDragging=true; widget.classList.add('dragging');
+    widget.style.zIndex=++zTop;
+    ox=t.clientX-widget.offsetLeft; oy=t.clientY-widget.offsetTop;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!isDragging)return;
+    const t=e.touches[0];
+    let nx=t.clientX-ox, ny=t.clientY-oy;
+    const cw=canvas.clientWidth, ch=canvas.clientHeight;
+    nx=Math.max(0,Math.min(nx,cw-widget.offsetWidth));
+    ny=Math.max(0,Math.min(ny,ch-widget.offsetHeight));
+    widget.style.left=nx+'px'; widget.style.top=ny+'px';
+  },{passive:true});
+  document.addEventListener('touchend',()=>{if(isDragging){isDragging=false;widget.classList.remove('dragging');}});
+}
+
+function makeResizable(widget){
+  const handle=widget.querySelector('.w-resize');
+  let resizing=false,sx,sy,sw,sh;
+  handle.addEventListener('mousedown',e=>{
+    resizing=true;sx=e.clientX;sy=e.clientY;
+    sw=widget.offsetWidth;sh=widget.offsetHeight;
+    widget.style.zIndex=++zTop;e.preventDefault();e.stopPropagation();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!resizing)return;
+    const nw=Math.max(240,sw+(e.clientX-sx));
+    const nh=Math.max(200,sh+(e.clientY-sy));
+    widget.style.width=nw+'px'; widget.style.height=nh+'px';
+  });
+  document.addEventListener('mouseup',()=>{resizing=false;});
+}
+
+// ── Panel class ───────────────────────────────────────────────────────────────
+let panelCount=0;
+
+class Panel{
+  constructor(){
+    this.id=++panelCount;
     this.step='search';
-    this.stopId=null; this.stopName=null;
-    this.lineId=null; this.lineInfo=null; this.lineRef=null;
-    this.spIds=[]; this.terminus=null;
-    this._lines=null; this._routes=null; this._spCache=null;
-    this._dirFilter=null; // 'outbound' | 'inbound' | null
-    this.countdown=REFRESH_SEC; this.timer=null;
-    this.acTimer=null; this.acRes=[]; this.acIdx=-1;
+    this.stopId=null;this.stopName=null;
+    this.lineId=null;this.lineInfo=null;this.lineRef=null;
+    this.spIds=[];this.terminus=null;
+    this._lines=null;this._routes=null;this._sp=null;
+    this._dirFilter=null;
+    this.countdown=REFRESH;this.timer=null;
+    this.acTimer=null;this.acRes=[];this.acIdx=-1;
     this.isRT=false;
+    this.widget=null;
   }
 
-  mount(el){this.el=el;this.render();}
+  mount(){
+    const cw=canvas.clientWidth, ch=canvas.clientHeight;
+    // Cascade position
+    const off=(panelCount-1)%8;
+    const x=Math.min(40+off*30, cw-320);
+    const y=Math.min(20+off*30, ch-250);
 
-  render(){
-    if(!this.el)return;
-    const badge=this.lineInfo?lineIcon(this.lineInfo,20):'';
-    const resetBtn=this.step!=='search'?`<button class="panel-reset" title="Réinitialiser">✕</button>`:'';
-    this.el.innerHTML=`
-      <div class="panel-header">
-        <span class="panel-num">Arrêt ${this.id+1}</span>
-        <div class="panel-actions">
-          <div class="panel-line-badge">${badge}</div>
-          ${resetBtn}
+    const el=document.createElement('div');
+    el.className='widget';
+    el.style.cssText=`left:${x}px;top:${y}px;width:300px;height:380px;z-index:${++zTop};`;
+    el.innerHTML=`
+      <div class="w-header">
+        <div class="w-handle"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="w-title" id="wt-${this.id}">PANNEAU ${this.id}</div>
+        <div class="w-actions">
+          <button class="w-btn" id="wrst-${this.id}" title="Réinitialiser" style="display:none;">↺</button>
+          <button class="w-btn close" id="wcls-${this.id}" title="Fermer">✕</button>
         </div>
       </div>
-      <div class="panel-body" id="pb-${this.id}"></div>
+      <div class="w-body" id="wb-${this.id}"></div>
+      <div class="w-resize"><svg viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1L1 7M7 4L4 7"/></svg></div>
     `;
-    this.el.querySelector('.panel-reset')?.addEventListener('click',()=>this.reset());
-    this.renderBody();
+    canvas.appendChild(el);
+    this.widget=el;
+
+    makeDraggable(el);
+    makeResizable(el);
+
+    el.querySelector(`#wcls-${this.id}`).onclick=()=>this.destroy();
+    el.querySelector(`#wrst-${this.id}`).onclick=()=>this.reset();
+
+    this.render();
+    return this;
   }
 
-  renderBody(){
-    const body=document.getElementById(`pb-${this.id}`);
-    if(!body)return; body.innerHTML='';
-    if      (this.step==='search')     this.renderSearch(body);
-    else if (this.step==='lines')      this.renderLines(body);
-    else if (this.step==='directions') this.renderDirections(body);
-    else if (this.step==='departures') this.renderDepartures(body);
+  destroy(){
+    if(this.timer)clearInterval(this.timer);
+    this.widget.style.transition='opacity .2s,transform .2s';
+    this.widget.style.opacity='0';this.widget.style.transform='scale(.95)';
+    setTimeout(()=>this.widget.remove(),200);
   }
 
-  // ── Search ──────────────────────────────────────────────────────────────────
+  setTitle(t){
+    const el=document.getElementById(`wt-${this.id}`);
+    if(el)el.textContent=t;
+  }
+
+  render(){
+    const rstBtn=document.getElementById(`wrst-${this.id}`);
+    if(rstBtn)rstBtn.style.display=this.step!=='search'?'flex':'none';
+    const body=document.getElementById(`wb-${this.id}`);
+    if(!body)return;body.innerHTML='';
+    if(this.step==='search')this.renderSearch(body);
+    else if(this.step==='lines')this.renderLines(body);
+    else if(this.step==='directions')this.renderDirections(body);
+    else if(this.step==='departures')this.renderDepartures(body);
+  }
+
+  // ── Search ────────────────────────────────────────────────────────────────
   renderSearch(body){
+    this.setTitle('PANNEAU '+this.id);
     body.innerHTML=`
       <div class="step-search">
-        <div class="step-search-icon">📍</div>
-        <div class="step-search-label">Chercher un arrêt</div>
-        <div class="search-field">
-          <input type="text" placeholder="Ex: Châtelet, Nation…" autocomplete="off" id="si-${this.id}"/>
-          <i class="ti ti-search"></i>
+        <div class="step-icon">◎</div>
+        <div class="step-label">CHERCHER UN ARRÊT</div>
+        <div class="search-wrap">
+          <input type="text" placeholder="Nation, Châtelet…" autocomplete="off" id="si-${this.id}"/>
           <div class="ac-drop" id="ac-${this.id}" style="display:none;"></div>
         </div>
       </div>
     `;
-    const input=document.getElementById(`si-${this.id}`);
+    const inp=document.getElementById(`si-${this.id}`);
     const drop=document.getElementById(`ac-${this.id}`);
-    input.addEventListener('input',()=>{
-      clearTimeout(this.acTimer);
-      const q=input.value.trim();
+    inp.addEventListener('input',()=>{
+      clearTimeout(this.acTimer);const q=inp.value.trim();
       if(q.length<2){drop.style.display='none';return;}
       drop.style.display='block';
-      drop.innerHTML='<div class="ac-drop-item"><span class="spinner" style="display:inline-block;"></span></div>';
+      drop.innerHTML='<div class="ac-item"><div class="spinner" style="margin:0 auto;"></div></div>';
       this.acTimer=setTimeout(async()=>{
         try{
-          const data=await api('v2/navitia/places',{q,count:8});
-          this.acRes=(data.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
+          const d=await api('v2/navitia/places',{q,count:8});
+          this.acRes=(d.places||[]).filter(p=>p.embedded_type==='stop_area'||p.embedded_type==='stop_point');
           this.acIdx=-1;
           if(!this.acRes.length){drop.style.display='none';return;}
           drop.innerHTML=this.acRes.map((p,i)=>{
             const s=p.stop_area||p.stop_point;
             const modes=(s.physical_modes||[]).map(m=>m.name).join(' · ');
-            return`<div class="ac-drop-item" data-i="${i}"><div class="ac-drop-name">${s.name}</div>${modes?`<div class="ac-drop-sub">${modes}</div>`:''}</div>`;
+            return`<div class="ac-item" data-i="${i}"><div class="ac-name">${s.name}</div>${modes?`<div class="ac-sub">${modes}</div>`:''}</div>`;
           }).join('');
-          drop.querySelectorAll('.ac-drop-item').forEach(item=>{
+          drop.querySelectorAll('.ac-item').forEach(item=>{
             item.addEventListener('mousedown',e=>{e.preventDefault();this.selectStop(this.acRes[+item.dataset.i]);});
           });
         }catch{drop.style.display='none';}
       },260);
     });
-    input.addEventListener('keydown',e=>{
-      const items=drop.querySelectorAll('.ac-drop-item');
+    inp.addEventListener('keydown',e=>{
+      const items=drop.querySelectorAll('.ac-item');
       if(e.key==='ArrowDown'){e.preventDefault();this.acIdx=Math.min(this.acIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
       if(e.key==='ArrowUp'){e.preventDefault();this.acIdx=Math.max(this.acIdx-1,0);items.forEach((el,i)=>el.classList.toggle('active',i===this.acIdx));}
       if(e.key==='Enter'&&this.acIdx>=0&&this.acRes[this.acIdx])this.selectStop(this.acRes[this.acIdx]);
       if(e.key==='Escape')drop.style.display='none';
     });
-    document.addEventListener('click',e=>{
-      if(!e.target.closest(`#si-${this.id}`)&&!e.target.closest(`#ac-${this.id}`))drop.style.display='none';
-    });
+    document.addEventListener('click',e=>{if(!e.target.closest(`#si-${this.id}`)&&!e.target.closest(`#ac-${this.id}`))drop.style.display='none';});
+    setTimeout(()=>inp.focus(),50);
   }
 
   async selectStop(place){
     const s=place.stop_area||place.stop_point;
-    this.stopId=s.id; this.stopName=s.name; this._lines=null;
-    this.step='lines'; this.render();
+    this.stopId=s.id;this.stopName=s.name;this._lines=null;
+    this.setTitle(s.name.toUpperCase());
+    this.step='lines';this.render();
     await this.fetchLines();
   }
 
-  // ── Lines ───────────────────────────────────────────────────────────────────
+  // ── Lines ─────────────────────────────────────────────────────────────────
   async fetchLines(){
-    const body=document.getElementById(`pb-${this.id}`);
+    const body=document.getElementById(`wb-${this.id}`);
     if(!body)return;
     const list=body.querySelector('.item-list');
-    if(list)list.innerHTML='<div class="panel-loader"><div class="spinner"></div></div>';
+    if(list)list.innerHTML='<div class="loader"><div class="spinner"></div></div>';
     try{
-      const data=await api('v2/navitia/stop_areas/'+this.stopId+'/lines',{count:40});
-      const lines=data.lines||[];
-      const modeOrder={'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3};
-      const rank=l=>{const m=(l.commercial_modes?.[0]?.name||'').toLowerCase();const e=Object.entries(modeOrder).find(([k])=>m.includes(k));return e?e[1]:4;};
-      lines.sort((a,b)=>{const d=rank(a)-rank(b);return d||(a.code||'').localeCompare(b.code||'',undefined,{numeric:true});});
+      const d=await api('v2/navitia/stop_areas/'+this.stopId+'/lines',{count:40});
+      const lines=d.lines||[];
+      const mo={'rer':0,'transilien':0,'train':0,'métro':1,'metro':1,'tramway':2,'tram':2,'bus':3,'noctilien':3};
+      const rank=l=>{const m=(l.commercial_modes?.[0]?.name||'').toLowerCase();const e=Object.entries(mo).find(([k])=>m.includes(k));return e?e[1]:4;};
+      lines.sort((a,b)=>rank(a)-rank(b)||(a.code||'').localeCompare(b.code||'',undefined,{numeric:true}));
       this._lines=lines;
     }catch{this._lines=[];}
-    const body2=document.getElementById(`pb-${this.id}`);
+    const body2=document.getElementById(`wb-${this.id}`);
     if(body2){body2.innerHTML='';this.renderLines(body2);}
   }
 
   renderLines(body){
-    const back=document.createElement('div'); back.className='step-back';
-    back.innerHTML=`<i class="ti ti-chevron-left"></i>${this.stopName}`;
-    back.onclick=()=>this.goStep('search');
+    const back=document.createElement('div');back.className='step-back';
+    back.innerHTML=`‹ ${this.stopName}`;back.onclick=()=>{this.step='search';this.render();};
     body.appendChild(back);
-    if(!this._lines){
-      const l=document.createElement('div');l.className='panel-loader';l.innerHTML='<div class="spinner"></div> Chargement…';body.appendChild(l);return;
-    }
-    if(!this._lines.length){
-      const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune ligne trouvée';body.appendChild(e);return;
-    }
-    const list=document.createElement('div'); list.className='item-list';
+    if(!this._lines){body.innerHTML+='<div class="loader"><div class="spinner"></div></div>';return;}
+    if(!this._lines.length){body.innerHTML+='<div class="empty-state">Aucune ligne trouvée</div>';return;}
+    const list=document.createElement('div');list.className='item-list';
     this._lines.forEach(l=>{
       const info={code:l.code||l.name,color:l.color,commercial_mode:l.commercial_modes?.[0]?.name||'',codes:l.codes||[]};
       const termini=[...new Set((l.routes||[]).map(r=>r.direction?.stop_area?.name||'').filter(Boolean))].slice(0,2).join(' · ');
-      const btn=document.createElement('button'); btn.className='item-btn';
-      btn.innerHTML=`${lineIcon(info,22)}<span>${l.name||l.code}</span><span class="item-btn-sub">${termini}</span><i class="ti ti-chevron-right item-btn-arrow"></i>`;
+      const btn=document.createElement('button');btn.className='item-btn';
+      btn.innerHTML=`${lineIcon(info,18)}<span>${l.name||l.code}</span><span class="item-sub">${termini}</span><span class="item-arr">›</span>`;
       btn.onclick=()=>{
-        this.lineId=l.id; this.lineInfo=info; this.lineRef=toLineRef(l.id,l.codes||[]);
-        this._routes=null; this._spCache=null; this._dirFilter=null;
-        this.step='directions'; this.render();
-        this.fetchDirections();
+        this.lineId=l.id;this.lineInfo=info;this.lineRef=toLineRef(l.id,l.codes||[]);
+        this._routes=null;this._sp=null;this._dirFilter=null;
+        this.step='directions';this.render();this.fetchDirections();
       };
       list.appendChild(btn);
     });
     body.appendChild(list);
   }
 
-  // ── Directions ──────────────────────────────────────────────────────────────
+  // ── Directions ────────────────────────────────────────────────────────────
   async fetchDirections(){
-    const body=document.getElementById(`pb-${this.id}`);
+    const body=document.getElementById(`wb-${this.id}`);
     if(!body)return;
-    // Afficher loader sous le back
-    const loader=document.createElement('div'); loader.className='panel-loader'; loader.innerHTML='<div class="spinner"></div> Chargement…';
-    body.querySelector('.item-list')?.remove();
-    body.appendChild(loader);
-
+    const loader=document.createElement('div');loader.className='loader';loader.innerHTML='<div class="spinner"></div>';
+    body.querySelector('.item-list')?.remove();body.appendChild(loader);
     try{
-      const [routesData,spData]=await Promise.all([
+      const [rd,sd]=await Promise.all([
         api('v2/navitia/lines/'+this.lineId+'/routes',{count:20}),
         api('v2/navitia/stop_areas/'+this.stopId+'/lines/'+this.lineId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}))
       ]);
-
-      let stopPoints=spData.stop_points||[];
-      // Fallback si aucun stop_point trouvé pour cette ligne
-      if(!stopPoints.length){
-        const fb=await api('v2/navitia/stop_areas/'+this.stopId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));
-        stopPoints=fb.stop_points||[];
-      }
-      this._spCache=stopPoints;
-
-      // ✅ Toutes les routes, sans filtrage ni troncature
-      const allRoutes=routesData.routes||[];
-
-      // Pour chaque route, calculer les spIds correspondants
-      this._routes=allRoutes.map(route=>{
+      let sp=sd.stop_points||[];
+      if(!sp.length){const fb=await api('v2/navitia/stop_areas/'+this.stopId+'/stop_points',{count:30}).catch(()=>({stop_points:[]}));sp=fb.stop_points||[];}
+      this._sp=sp;
+      this._routes=(rd.routes||[]).map(route=>{
         const terminus=route.direction?.stop_area?.name||route.name||'?';
-        // Stop points qui appartiennent à cette route
-        const routeSpIds=stopPoints
-          .filter(sp=>!sp.routes?.length||sp.routes.some(r=>r.id===route.id))
-          .map(sp=>sp.id);
-        const spIds=routeSpIds.length?routeSpIds:stopPoints.map(sp=>sp.id);
-        return {
-          id: route.id,
-          terminus,
-          spIds,
-          directionType: route.direction_type||'outbound' // 'outbound' | 'inbound'
-        };
+        const rsp=sp.filter(s=>!s.routes?.length||s.routes.some(r=>r.id===route.id)).map(s=>s.id);
+        return{id:route.id,terminus,spIds:rsp.length?rsp:sp.map(s=>s.id),directionType:route.direction_type||'outbound'};
       });
-
-    }catch(e){
-      this._routes=[];
-      console.error('fetchDirections error',e);
-    }
-
-    // Redessiner
-    const body2=document.getElementById(`pb-${this.id}`);
+    }catch(e){this._routes=[];}
+    const body2=document.getElementById(`wb-${this.id}`);
     if(body2){body2.innerHTML='';this.renderDirections(body2);}
   }
 
   renderDirections(body){
-    const back=document.createElement('div'); back.className='step-back';
-    back.innerHTML=`<i class="ti ti-chevron-left"></i>Lignes`;
-    back.onclick=()=>{this.step='lines';this.render();};
+    const back=document.createElement('div');back.className='step-back';
+    back.innerHTML=`‹ Lignes`;back.onclick=()=>{this.step='lines';this.render();};
     body.appendChild(back);
+    if(!this._routes){body.appendChild(Object.assign(document.createElement('div'),{className:'loader',innerHTML:'<div class="spinner"></div>'}));return;}
+    if(!this._routes.length){body.appendChild(Object.assign(document.createElement('div'),{className:'empty-state',textContent:'Aucune direction'}));return;}
 
-    if(!this._routes){
-      const l=document.createElement('div');l.className='panel-loader';l.innerHTML='<div class="spinner"></div> Chargement…';body.appendChild(l);return;
-    }
-    if(!this._routes.length){
-      const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune direction';body.appendChild(e);return;
-    }
-
-    // Onglets Aller / Retour si les deux existent
-    const hasOutbound=this._routes.some(r=>r.directionType==='outbound');
-    const hasInbound =this._routes.some(r=>r.directionType==='inbound');
-    const hasBoth    =hasOutbound&&hasInbound;
-
-    if(hasBoth){
+    const hasOut=this._routes.some(r=>r.directionType==='outbound');
+    const hasIn=this._routes.some(r=>r.directionType==='inbound');
+    if(hasOut&&hasIn){
       if(!this._dirFilter)this._dirFilter='outbound';
-      const tabs=document.createElement('div'); tabs.className='dir-tabs';
+      const tabs=document.createElement('div');tabs.className='dir-tabs';
       [{dir:'outbound',lbl:'→ Aller'},{dir:'inbound',lbl:'← Retour'}].forEach(({dir,lbl})=>{
-        const btn=document.createElement('button'); btn.className='dir-tab'+(this._dirFilter===dir?' active':'');
+        const btn=document.createElement('button');btn.className='dir-tab'+(this._dirFilter===dir?' active':'');
         btn.textContent=lbl;
-        btn.onclick=()=>{
-          this._dirFilter=dir;
-          const body3=document.getElementById(`pb-${this.id}`);
-          if(body3){body3.innerHTML='';this.renderDirections(body3);}
-        };
+        btn.onclick=()=>{this._dirFilter=dir;const b=document.getElementById(`wb-${this.id}`);if(b){b.innerHTML='';this.renderDirections(b);}};
         tabs.appendChild(btn);
       });
       body.appendChild(tabs);
     }
 
-    const visible=hasBoth ? this._routes.filter(r=>r.directionType===this._dirFilter) : this._routes;
+    const visible=(hasOut&&hasIn)?this._routes.filter(r=>r.directionType===this._dirFilter):this._routes;
+    if(!visible.length){body.appendChild(Object.assign(document.createElement('div'),{className:'empty-state',textContent:'Aucune destination'}));return;}
 
-    if(!visible.length){
-      const e=document.createElement('div');e.className='panel-empty';e.innerHTML='<i class="ti ti-mood-sad"></i>Aucune destination dans ce sens';body.appendChild(e);return;
-    }
-
-    // ── Tri "Via Paris / Banlieue" pour RER et Transilien ──────────────────────
-    const isHeavyRail = ['rer','transilien','train'].some(k=>(this.lineInfo?.commercial_mode||'').toLowerCase().includes(k));
-
-    // Liste des gares parisiennes IDFM (noms normalisés)
-    const PARIS_STOPS = new Set([
-      'austerlitz','bibliotheque francois mitterrand','bercy','gare de lyon','gare du nord',
-      'gare de l est','gare saint lazare','saint lazare','lazare','montparnasse','invalides',
-      'champ de mars','orsay','javel','kennedy','passy','avenue du president kennedy',
-      'denfert rochereau','roissy','aeroport cdg','orly','massy','issy','clamart',
-      'versailles rive droite','versailles rive gauche','versailles chantiers',
-      'boulevard victor','boissy saint leger','chessy','marne la vallee',
-      'pontoise','cergy','saint germain en laye','poissy','maisons laffitte',
-      'rambouillet','dourdan','etampes','la verriere','dreux',
-      'robinson','sceaux','bourg la reine','antony',
-      'noisy le grand','torcy','bry sur marne',
-      'porte de clichy','nanterre','la defense','puteaux'
-    ]);
-
-    function isParisTerminus(terminusName) {
-      const n = terminusName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      // Terminus explicitement parisien (arrondissements ou "Paris" dans le nom)
-      if (n.includes('paris')) return true;
-      // Ou correspond à une gare connue de la liste
-      return [...PARIS_STOPS].some(p => n.includes(p) || p.includes(n.split(' ')[0]));
-    }
-
+    // Groupes Paris / Banlieue pour RER/Transilien
+    const isHeavy=['rer','transilien','train'].some(k=>(this.lineInfo?.commercial_mode||'').toLowerCase().includes(k));
     let groups;
-    if(isHeavyRail && visible.length > 2){
-      // Séparer via Paris vs banlieue
-      const viaP  = visible.filter(r=>isParisTerminus(r.terminus));
-      const nonP  = visible.filter(r=>!isParisTerminus(r.terminus));
-      if(viaP.length && nonP.length){
-        groups = [
-          {label:'🏛 Via / Vers Paris', routes: viaP},
-          {label:'🌳 Banlieue',         routes: nonP}
-        ];
-      } else {
-        groups = [{label:null, routes: visible}];
-      }
-    } else {
-      groups = [{label:null, routes: visible}];
-    }
+    if(isHeavy&&visible.length>2){
+      const vp=visible.filter(r=>isParisStop(r.terminus));
+      const vb=visible.filter(r=>!isParisStop(r.terminus));
+      groups=(vp.length&&vb.length)?[{label:'🏛 Via / Vers Paris',routes:vp},{label:'🌳 Banlieue',routes:vb}]:[{label:null,routes:visible}];
+    }else{groups=[{label:null,routes:visible}];}
 
-    const list=document.createElement('div'); list.className='item-list';
-
-    groups.forEach(({label, routes})=>{
-      // Sous-titre de groupe
-      if(label){
-        const lbl=document.createElement('div');
-        lbl.style.cssText='font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 4px 4px;';
-        lbl.textContent=label;
-        list.appendChild(lbl);
-      }
+    const list=document.createElement('div');list.className='item-list';
+    groups.forEach(({label,routes})=>{
+      if(label){const lbl=document.createElement('div');lbl.className='group-label';lbl.textContent=label;list.appendChild(lbl);}
       routes.forEach(route=>{
         const arrow=route.directionType==='inbound'?'←':'→';
-        const btn=document.createElement('button'); btn.className='item-btn';
-        btn.innerHTML=`
-          <span style="font-size:15px;flex-shrink:0;">${arrow}</span>
-          <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${route.terminus}</span>
-          <i class="ti ti-chevron-right item-btn-arrow"></i>
-        `;
-        btn.onclick=()=>{
-          this.terminus=route.terminus;
-          this.spIds=route.spIds;
-          this.step='departures';
-          this.render();
-          this.refresh();
-          this.startTimer();
-        };
+        const btn=document.createElement('button');btn.className='item-btn';
+        btn.innerHTML=`<span style="flex-shrink:0;">${arrow}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${route.terminus}</span><span class="item-arr">›</span>`;
+        btn.onclick=()=>{this.terminus=route.terminus;this.spIds=route.spIds;this.step='departures';this.render();this.refresh();this.startTimer();};
         list.appendChild(btn);
       });
     });
-
     body.appendChild(list);
   }
 
-  // ── Departures ──────────────────────────────────────────────────────────────
+  // ── Departures ────────────────────────────────────────────────────────────
   renderDepartures(body){
+    this.setTitle((this.lineInfo?.code||'?')+' → '+this.terminus);
     body.innerHTML=`
       <div class="dep-view">
         <div class="dep-subheader">
-          <div style="flex-shrink:0;">${lineIcon(this.lineInfo,22)}</div>
-          <div class="dep-direction">→ ${this.terminus}</div>
-          <span class="fresh ${this.isRT?'rt':'th'}" id="fresh-${this.id}">${this.isRT?'⚡ Temps réel':'📅 Théorique'}</span>
+          <div style="flex-shrink:0;">${lineIcon(this.lineInfo,18)}</div>
+          <div class="dep-dir">→ ${this.terminus}</div>
+          <span class="fresh ${this.isRT?'rt':'th'}" id="fr-${this.id}">${this.isRT?'RT':'TH'}</span>
         </div>
-        <div class="dep-list" id="dep-list-${this.id}">
-          <div class="panel-loader"><div class="spinner"></div></div>
-        </div>
+        <div class="dep-list" id="dl-${this.id}"><div class="loader"><div class="spinner"></div></div></div>
         <div class="dep-footer">
-          <div class="dep-footer-dot ${this.isRT?'rt':'th'}" id="dot-${this.id}"></div>
-          <div class="dep-footer-progress">
-            <div class="dep-footer-bar" id="bar-${this.id}" style="width:100%"></div>
-          </div>
-          <span class="dep-footer-cd" id="cd-${this.id}">${this.countdown}s</span>
-          <button class="dep-footer-btn" title="Actualiser" onclick="panels[${this.id}].manualRefresh()">↻</button>
+          <div class="rt-dot ${this.isRT?'ok':'warn'}" id="dot-${this.id}"></div>
+          <div class="fp-bar-wrap"><div class="fp-bar" id="bar-${this.id}" style="width:100%"></div></div>
+          <span class="fp-cd" id="cd-${this.id}">${this.countdown}s</span>
+          <button class="fp-refresh" onclick="panels[${this.id-1}]?.manualRefresh()">↻</button>
         </div>
       </div>
     `;
   }
 
-  updateDepList(deps){
-    const list=document.getElementById(`dep-list-${this.id}`);
-    if(!list)return;
-    if(!deps.length){
-      list.innerHTML='<div class="panel-empty"><i class="ti ti-clock-off"></i>Aucun passage imminent</div>';return;
-    }
-    list.innerHTML='';
-    const now=Date.now();
+  updateList(deps){
+    const list=document.getElementById(`dl-${this.id}`);if(!list)return;
+    if(!deps.length){list.innerHTML='<div class="empty-state">Aucun passage imminent</div>';return;}
+    list.innerHTML='';const now=Date.now();
     deps.slice(0,8).forEach(dep=>{
-      const expected=new Date(dep.et);
-      const aimed=dep.at?new Date(dep.at):null;
-      const waitMin=Math.round((expected-now)/60000);
-      const timeStr=formatTime(expected);
-      let waitLabel=waitMin+' min',cls='';
-      if(dep.atStop||waitMin<=0){waitLabel='À quai';cls='quai';}
-      else if(waitMin===1){waitLabel='1 min';cls='soon';}
-      else if(waitMin<=4){cls='soon';}
+      const exp=new Date(dep.et),aim=dep.at?new Date(dep.at):null;
+      const wm=Math.round((exp-now)/60000),ts=ft(exp);
+      let lbl=wm+' min',cls='';
+      if(dep.atStop||wm<=0){lbl='À quai';cls='quai';}
+      else if(wm<=1){lbl='1 min';cls='soon';}
+      else if(wm<=4){cls='soon';}
+      if(dep.cancelled){lbl='Annulé';cls='late';}
       let delay='';
-      if(aimed&&dep.rt){const d=Math.round((expected-aimed)/60000);if(d>0)delay=`<span class="dep-delay late">+${d}'</span>`;else if(d<0)delay=`<span class="dep-delay early">${d}'</span>`;}
-      const cancel=dep.cancelled?'<span style="font-size:10px;color:var(--danger);font-weight:600;margin-left:3px;">Supprimé</span>':'';
-      const row=document.createElement('div'); row.className='dep-row';
-      row.innerHTML=`
-        <div class="dep-dest">${dep.dest||this.terminus}</div>
-        <div class="dep-right">
-          <div class="dep-wait ${cls}">${waitLabel}${delay}${cancel}</div>
-          <div class="dep-time">${timeStr}</div>
-        </div>`;
+      if(aim&&dep.rt){const d=Math.round((exp-aim)/60000);if(d>0)delay=`<span class="dep-delay pos">+${d}'</span>`;else if(d<0)delay=`<span class="dep-delay neg">${d}'</span>`;}
+      const row=document.createElement('div');row.className='dep-row';
+      row.innerHTML=`<div class="dep-dest">${dep.dest||this.terminus}</div><div style="display:flex;align-items:center;gap:4px;">${delay}<span class="dep-chip ${cls}">${lbl}</span></div>`;
       list.appendChild(row);
     });
   }
@@ -666,61 +694,61 @@ class Panel {
   async refresh(){
     try{
       let deps=[],isRT=false;
-      const strategy=getStrategy(this.lineInfo?.commercial_mode);
-
-      if(strategy==='stop-monitoring'){
-        for(const spId of this.spIds){
-          const mr=toMonRef(spId);if(!mr)continue;
-          try{const d=await api('stop-monitoring',{MonitoringRef:mr,MaximumStopVisits:20});const p=parseSM(d,this.terminus);if(p.length){deps=p;isRT=true;break;}}catch{}
-        }
-      } else if(this.lineRef){
+      const strat=strategy(this.lineInfo?.commercial_mode);
+      if(strat==='sm'){
+        for(const sp of this.spIds){const mr=monRef(sp);if(!mr)continue;
+          try{const d=await api('stop-monitoring',{MonitoringRef:mr,MaximumStopVisits:20});const p=parseSM(d,this.terminus);if(p.length){deps=p;isRT=true;break;}}catch{}}
+      }else if(this.lineRef){
         try{const d=await api('estimated-timetable',{LineRef:this.lineRef});deps=parseET(d,this.spIds,this.terminus);isRT=true;}catch{}
       }
-
       if(!deps.length&&this.spIds.length){
         try{const d=await api('v2/navitia/stop_points/'+this.spIds[0]+'/departures',{count:15});deps=parseNAV(d.departures||[],this.terminus);}catch{}
       }
-
       this.isRT=isRT;
-      const freshEl=document.getElementById(`fresh-${this.id}`);
-      const dotEl=document.getElementById(`dot-${this.id}`);
-      if(freshEl){freshEl.className=`fresh ${isRT?'rt':'th'}`;freshEl.textContent=isRT?'⚡ Temps réel':'📅 Théorique';}
-      if(dotEl){dotEl.className=`dep-footer-dot ${isRT?'rt':'th'}`;}
-      this.updateDepList(deps);
+      const fr=document.getElementById(`fr-${this.id}`);const dot=document.getElementById(`dot-${this.id}`);
+      if(fr){fr.className=`fresh ${isRT?'rt':'th'}`;fr.textContent=isRT?'RT':'TH';}
+      if(dot){dot.className=`rt-dot ${isRT?'ok':'warn'}`;}
+      this.updateList(deps);
     }catch{}
   }
 
-  async manualRefresh(){this.countdown=REFRESH_SEC;this.updateTimerUI();await this.refresh();}
+  async manualRefresh(){this.countdown=REFRESH;this.updateTimerUI();await this.refresh();}
 
   startTimer(){
-    this.stopTimer(); this.countdown=REFRESH_SEC;
+    this.stopTimer();this.countdown=REFRESH;
     this.timer=setInterval(()=>{
       this.countdown--;this.updateTimerUI();
-      if(this.countdown<=0){this.countdown=REFRESH_SEC;this.refresh();}
+      if(this.countdown<=0){this.countdown=REFRESH;this.refresh();}
     },1000);
   }
   stopTimer(){clearInterval(this.timer);this.timer=null;}
   updateTimerUI(){
-    const cd=document.getElementById(`cd-${this.id}`);
-    const bar=document.getElementById(`bar-${this.id}`);
+    const cd=document.getElementById(`cd-${this.id}`);const bar=document.getElementById(`bar-${this.id}`);
     if(cd)cd.textContent=this.countdown+'s';
-    if(bar)bar.style.width=(this.countdown/REFRESH_SEC*100)+'%';
+    if(bar)bar.style.width=(this.countdown/REFRESH*100)+'%';
   }
-  goStep(step){this.stopTimer();this.step=step;this.render();}
   reset(){
     this.stopTimer();
-    Object.assign(this,{step:'search',stopId:null,stopName:null,lineId:null,lineInfo:null,lineRef:null,spIds:[],terminus:null,_lines:null,_routes:null,_spCache:null,_dirFilter:null,countdown:REFRESH_SEC,isRT:false});
+    Object.assign(this,{step:'search',stopId:null,stopName:null,lineId:null,lineInfo:null,lineRef:null,spIds:[],terminus:null,_lines:null,_routes:null,_sp:null,_dirFilter:null,countdown:REFRESH,isRT:false});
     this.render();
   }
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 const panels=[];
-const grid=document.getElementById('grid');
-for(let i=0;i<3;i++){
-  const el=document.createElement('div'); el.className='panel';
-  grid.appendChild(el);
-  const p=new Panel(i); p.mount(el); panels.push(p);
+function addPanel(){
+  const p=new Panel();p.mount();panels.push(p);
+  // Hint on first panel
+  if(panels.length===1){
+    const hint=document.getElementById('fab-hint');
+    hint.classList.add('show');setTimeout(()=>hint.classList.remove('show'),3000);
+  }
 }
+
+document.getElementById('btn-add').addEventListener('click',addPanel);
+
+// Créer 3 panneaux par défaut
+addPanel();addPanel();addPanel();
 </script>
 </body>
 </html>
