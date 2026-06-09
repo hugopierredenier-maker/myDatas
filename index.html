@@ -413,6 +413,90 @@ function makeResizable(widget){
   document.addEventListener('mouseup',()=>{resize=false;});
 }
 
+
+// ── Branch clustering for RER/Transilien ─────────────────────────────────────
+// Regroupe les terminus par branche géographique en utilisant leurs coordonnées GPS.
+// Principe : on projette tous les terminus sur l'axe principal de la ligne (PCA),
+// puis on coupe en deux groupes autour de la médiane → deux branches naturelles.
+function clusterByBranch(routes){
+  // Extraire les coords valides
+  const withCoord=routes.map(r=>{
+    const lat=parseFloat(r.coord?.lat);
+    const lon=parseFloat(r.coord?.lon);
+    return{route:r,lat,lon,valid:!isNaN(lat)&&!isNaN(lon)};
+  });
+
+  const valid=withCoord.filter(r=>r.valid);
+  // Pas assez de coords → fallback nord/sud simple
+  if(valid.length<2) return clusterNorthSouth(routes);
+
+  // Centre de masse
+  const mLat=valid.reduce((s,r)=>s+r.lat,0)/valid.length;
+  const mLon=valid.reduce((s,r)=>s+r.lon,0)/valid.length;
+
+  // Vecteur principal (différence max entre deux terminus les plus éloignés)
+  // On cherche les deux points les plus éloignés (diamètre du nuage)
+  let maxDist=0,pA=valid[0],pB=valid[1]||valid[0];
+  for(let i=0;i<valid.length;i++){
+    for(let j=i+1;j<valid.length;j++){
+      const d=Math.hypot(valid[i].lat-valid[j].lat,valid[i].lon-valid[j].lon);
+      if(d>maxDist){maxDist=d;pA=valid[i];pB=valid[j];}
+    }
+  }
+
+  // Axe principal = vecteur pA→pB
+  const axLat=pB.lat-pA.lat, axLon=pB.lon-pA.lon;
+  const axLen=Math.hypot(axLat,axLon)||1;
+
+  // Projeter chaque terminus sur cet axe
+  const projections=withCoord.map(r=>{
+    if(!r.valid) return{...r,proj:0};
+    const proj=((r.lat-pA.lat)*axLat+(r.lon-pA.lon)*axLon)/axLen;
+    return{...r,proj};
+  });
+
+  // Centre de Paris sur cet axe (lat=48.853, lon=2.35)
+  const parisProjLat=48.853-pA.lat, parisProjLon=2.35-pA.lon;
+  const parisProj=(parisProjLat*axLat+parisProjLon*axLon)/axLen;
+
+  // Séparer en deux groupes : côté A (proj < parisProj) et côté B (proj > parisProj)
+  // Si un terminus est proche de Paris (distance < 0.15°~15km) → groupe Paris
+  const PARIS_THRESH=0.15;
+  const sideA=[], sideB=[], parisGroup=[];
+
+  projections.forEach(r=>{
+    const distParis=r.valid?Math.hypot(r.lat-48.853,r.lon-2.35):99;
+    if(distParis<PARIS_THRESH){parisGroup.push(r.route);return;}
+    if(r.proj<=parisProj) sideA.push(r.route);
+    else sideB.push(r.route);
+  });
+
+  // Nommer les groupes d'après leurs terminus les plus représentatifs
+  function groupLabel(routes){
+    if(!routes.length) return null;
+    const names=routes.map(r=>r.terminus.split(' ')[0]).slice(0,2).join(', ');
+    return names;
+  }
+
+  const groups=[];
+  if(sideA.length) groups.push({label:'↙ '+groupLabel(sideA), routes:sideA});
+  if(sideB.length) groups.push({label:'↗ '+groupLabel(sideB), routes:sideB});
+  if(parisGroup.length) groups.push({label:'🏛 Paris', routes:parisGroup});
+
+  // Si tout est dans un seul groupe → pas de clustering
+  if(groups.length<=1) return [{label:null,routes}];
+  return groups;
+}
+
+function clusterNorthSouth(routes){
+  // Fallback : nord (lat > 48.85) vs sud
+  const PARIS_LAT=48.853;
+  const north=routes.filter(r=>isParisStop(r.terminus)||parseFloat(r.coord?.lat)>PARIS_LAT);
+  const south=routes.filter(r=>!north.includes(r));
+  if(north.length&&south.length) return[{label:'↗ Nord / Est',routes:north},{label:'↙ Sud / Ouest',routes:south}];
+  return[{label:null,routes}];
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 let panelCount=0;
 const panels=[];
@@ -655,9 +739,7 @@ class Panel{
     const isHeavy=['rer','transilien','train'].some(k=>(this.lineInfo?.commercial_mode||'').toLowerCase().includes(k));
     let groups;
     if(isHeavy&&visible.length>2){
-      const vp=visible.filter(r=>isParisStop(r.terminus));
-      const vb=visible.filter(r=>!isParisStop(r.terminus));
-      groups=(vp.length&&vb.length)?[{label:'Via / Vers Paris',routes:vp},{label:'Banlieue',routes:vb}]:[{label:null,routes:visible}];
+      groups=clusterByBranch(visible);
     }else{groups=[{label:null,routes:visible}];}
 
     const list=document.createElement('div');list.className='item-list';
