@@ -415,86 +415,59 @@ function makeResizable(widget){
 
 
 // ── Branch clustering for RER/Transilien ─────────────────────────────────────
-// Regroupe les terminus par branche géographique en utilisant leurs coordonnées GPS.
-// Principe : on projette tous les terminus sur l'axe principal de la ligne (PCA),
-// puis on coupe en deux groupes autour de la médiane → deux branches naturelles.
+// Classe les terminus en Ouest et Est selon leur longitude par rapport à Paris.
+// Paris centre = lon 2.347 (Châtelet).
+// Les lignes Nord/Sud (RER B, D) utilisent la latitude.
+const PARIS_LON = 2.347;
+const PARIS_LAT = 48.853;
+
 function clusterByBranch(routes){
-  // Extraire les coords valides
-  const withCoord=routes.map(r=>{
-    const lat=parseFloat(r.coord?.lat);
-    const lon=parseFloat(r.coord?.lon);
-    return{route:r,lat,lon,valid:!isNaN(lat)&&!isNaN(lon)};
-  });
+  // Séparer les routes avec et sans coordonnées
+  const withCoord = routes.filter(r => r.coord && !isNaN(parseFloat(r.coord.lon)));
+  if(withCoord.length < 2) return [{label:null, routes}];
 
-  const valid=withCoord.filter(r=>r.valid);
-  // Pas assez de coords → fallback nord/sud simple
-  if(valid.length<2) return clusterNorthSouth(routes);
+  // Calculer l'amplitude lon vs lat pour choisir l'axe dominant
+  const lons = withCoord.map(r => parseFloat(r.coord.lon));
+  const lats = withCoord.map(r => parseFloat(r.coord.lat));
+  const spanLon = Math.max(...lons) - Math.min(...lons);
+  const spanLat = Math.max(...lats) - Math.min(...lats);
 
-  // Centre de masse
-  const mLat=valid.reduce((s,r)=>s+r.lat,0)/valid.length;
-  const mLon=valid.reduce((s,r)=>s+r.lon,0)/valid.length;
+  // Axe dominant : si la ligne est plus étalée en longitude → axe Est/Ouest
+  // sinon → axe Nord/Sud (RER B, C, D...)
+  // On compense le fait que 1° lat ≈ 111 km mais 1° lon ≈ 74 km en IDF
+  // donc on normalise spanLon * 1.5 pour comparer correctement
+  const useEastWest = spanLon * 1.5 >= spanLat;
 
-  // Vecteur principal (différence max entre deux terminus les plus éloignés)
-  // On cherche les deux points les plus éloignés (diamètre du nuage)
-  let maxDist=0,pA=valid[0],pB=valid[1]||valid[0];
-  for(let i=0;i<valid.length;i++){
-    for(let j=i+1;j<valid.length;j++){
-      const d=Math.hypot(valid[i].lat-valid[j].lat,valid[i].lon-valid[j].lon);
-      if(d>maxDist){maxDist=d;pA=valid[i];pB=valid[j];}
+  const west=[], east=[], north=[], south=[];
+
+  routes.forEach(r => {
+    const lon = r.coord ? parseFloat(r.coord.lon) : NaN;
+    const lat = r.coord ? parseFloat(r.coord.lat) : NaN;
+    if(useEastWest){
+      if(isNaN(lon)) { west.push(r); return; } // sans coord → côté ouest par défaut
+      if(lon <= PARIS_LON) west.push(r);
+      else east.push(r);
+    } else {
+      if(isNaN(lat)) { south.push(r); return; }
+      if(lat >= PARIS_LAT) north.push(r);
+      else south.push(r);
     }
-  }
-
-  // Axe principal = vecteur pA→pB
-  const axLat=pB.lat-pA.lat, axLon=pB.lon-pA.lon;
-  const axLen=Math.hypot(axLat,axLon)||1;
-
-  // Projeter chaque terminus sur cet axe
-  const projections=withCoord.map(r=>{
-    if(!r.valid) return{...r,proj:0};
-    const proj=((r.lat-pA.lat)*axLat+(r.lon-pA.lon)*axLon)/axLen;
-    return{...r,proj};
   });
 
-  // Centre de Paris sur cet axe (lat=48.853, lon=2.35)
-  const parisProjLat=48.853-pA.lat, parisProjLon=2.35-pA.lon;
-  const parisProj=(parisProjLat*axLat+parisProjLon*axLon)/axLen;
-
-  // Séparer en deux groupes : côté A (proj < parisProj) et côté B (proj > parisProj)
-  // Si un terminus est proche de Paris (distance < 0.15°~15km) → groupe Paris
-  const PARIS_THRESH=0.15;
-  const sideA=[], sideB=[], parisGroup=[];
-
-  projections.forEach(r=>{
-    const distParis=r.valid?Math.hypot(r.lat-48.853,r.lon-2.35):99;
-    if(distParis<PARIS_THRESH){parisGroup.push(r.route);return;}
-    if(r.proj<=parisProj) sideA.push(r.route);
-    else sideB.push(r.route);
-  });
-
-  // Nommer les groupes d'après leurs terminus les plus représentatifs
-  function groupLabel(routes){
-    if(!routes.length) return null;
-    const names=routes.map(r=>r.terminus.split(' ')[0]).slice(0,2).join(', ');
-    return names;
+  if(useEastWest){
+    // Trier chaque groupe par longitude (les plus proches de Paris en premier)
+    west.sort((a,b)=>parseFloat(b.coord?.lon||0)-parseFloat(a.coord?.lon||0));
+    east.sort((a,b)=>parseFloat(a.coord?.lon||0)-parseFloat(b.coord?.lon||0));
+    if(west.length && east.length)
+      return [{label:'← Ouest', routes:west}, {label:'Est →', routes:east}];
+  } else {
+    north.sort((a,b)=>parseFloat(a.coord?.lat||0)-parseFloat(b.coord?.lat||0));
+    south.sort((a,b)=>parseFloat(b.coord?.lat||0)-parseFloat(a.coord?.lat||0));
+    if(north.length && south.length)
+      return [{label:'↑ Nord', routes:north}, {label:'↓ Sud', routes:south}];
   }
 
-  const groups=[];
-  if(sideA.length) groups.push({label:'↙ '+groupLabel(sideA), routes:sideA});
-  if(sideB.length) groups.push({label:'↗ '+groupLabel(sideB), routes:sideB});
-  if(parisGroup.length) groups.push({label:'🏛 Paris', routes:parisGroup});
-
-  // Si tout est dans un seul groupe → pas de clustering
-  if(groups.length<=1) return [{label:null,routes}];
-  return groups;
-}
-
-function clusterNorthSouth(routes){
-  // Fallback : nord (lat > 48.85) vs sud
-  const PARIS_LAT=48.853;
-  const north=routes.filter(r=>isParisStop(r.terminus)||parseFloat(r.coord?.lat)>PARIS_LAT);
-  const south=routes.filter(r=>!north.includes(r));
-  if(north.length&&south.length) return[{label:'↗ Nord / Est',routes:north},{label:'↙ Sud / Ouest',routes:south}];
-  return[{label:null,routes}];
+  return [{label:null, routes}];
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
